@@ -1,0 +1,15 @@
+.page { background:#0a1628; min-height:100vh; color:#fff; padding: 24rpx 28rpx 80rpx;}
+.hero { padding: 40rpx 32rpx; border-radius: 24rpx; background: linear-gradient(135deg, #1e3a8a, #0369a1); box-shadow: 0 16rpx 40rpx rgba(3,105,161,0.35); margin-bottom:28rpx;}
+.hero .label { color:#93c5fd; font-size:26rpx;}
+.hero .score { font-size: 120rpx; font-weight: 700; line-height: 1.1; margin: 12rpx 0 10rpx;}
+.hero .score.low { color:#fca5a5; }
+.hero .tip { font-size: 26rpx; margin-bottom: 28rpx;}
+.bars .bar { background: rgba(255,255,255,0.15); border-radius:999rpx; overflow:hidden; height:16rpx;}
+.bars .fill { height:100%; background: linear-gradient(90deg,#34d399,#00d4ff);}
+.markers { margin-top: 10rpx; display:flex; justify-content:space-between; color:#93c5fd; font-size:22rpx;}
+.sect { background: rgba(255,255,255,0.04); border-radius:18rpx; padding: 24rpx; margin-bottom:20rpx;}
+.sect-title { color:#aac1e0; font-size:26rpx; margin-bottom:16rpx;}
+.row { font-size:26rpx; padding:10rpx 0; color:#d6e2f2; line-height:1.6;}
+.ok { color:#6ee7b7; }
+.bad { color:#fca5a5; }
+.warn { color:#fcd34d;}

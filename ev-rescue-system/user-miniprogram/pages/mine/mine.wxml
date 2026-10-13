@@ -1,0 +1,222 @@
+<!-- pages/mine/mine.wxml - 个人中心 -->
+<view class="container">
+  <!-- 顶部背景区域 -->
+  <view class="profile-header" style="padding-top: {{statusBarHeight + 20}}px;">
+    <view class="header-bg-glow"></view>
+    <view class="header-bg-grid"></view>
+
+    <!-- 已登录 -->
+    <view class="profile-content" wx:if="{{isLoggedIn}}">
+      <view class="avatar-wrap">
+        <image class="avatar" src="{{userInfo.avatar || '/images/default-avatar.png'}}" mode="aspectFill" catchtap="stopPropagation"></image>
+        <view class="avatar-ring"></view>
+      </view>
+      <view class="user-info">
+        <text class="user-name">{{userInfo.nickname || '绵阳用户'}}</text>
+        <view class="user-tags">
+          <view class="user-tag">
+            <view class="tag-dot green"></view>
+            <text>已认证</text>
+          </view>
+          <view class="user-tag" wx:if="{{userInfo.phone}}">
+            <view class="tag-dot cyan"></view>
+            <text>{{userInfo.phone}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="logout-btn" catchtap="onLogout" wx:if="{{isLoggedIn}}">
+        <text>退出</text>
+      </view>
+    </view>
+
+    <!-- 未登录 -->
+    <view class="profile-content" wx:if="{{!isLoggedIn}}">
+      <view class="avatar-wrap">
+        <view class="avatar avatar-default">
+          <text class="avatar-placeholder">用户</text>
+        </view>
+        <view class="avatar-ring"></view>
+      </view>
+      <view class="user-info">
+        <text class="user-name">未登录</text>
+        <view class="user-tags">
+          <view class="user-tag">
+            <view class="tag-dot cyan"></view>
+            <text>点击登录享受服务</text>
+          </view>
+        </view>
+      </view>
+      <view class="login-btn" catchtap="onShowLogin">
+        <text>登录</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 快捷入口 -->
+  <view class="quick-actions">
+    <view class="quick-item" bindtap="onMenuTap" data-path="orders">
+      <view class="quick-icon icon-quick-order">
+        <view class="quick-icon-inner"></view>
+      </view>
+      <text class="quick-text">我的订单</text>
+    </view>
+    <view class="quick-item" bindtap="goToOrder">
+      <view class="quick-icon icon-quick-rescue">
+        <view class="quick-icon-inner"></view>
+      </view>
+      <text class="quick-text">呼叫救援</text>
+    </view>
+    <view class="quick-item" bindtap="onMenuTap" data-path="phone">
+      <view class="quick-icon icon-quick-phone">
+        <view class="quick-icon-inner"></view>
+      </view>
+      <text class="quick-text">联系客服</text>
+    </view>
+  </view>
+
+  <!-- 服务卡区域 -->
+  <view class="section" wx:if="{{isLoggedIn}}">
+    <view class="section-header">
+      <text class="section-title">我的服务卡</text>
+      <text class="section-count" wx:if="{{cards.length > 0}}">共{{cards.length}}张</text>
+    </view>
+
+    <view class="cards-list" wx:if="{{cards.length > 0}}">
+      <view class="service-card" wx:for="{{cards}}" wx:key="id">
+        <view class="card-top">
+          <view class="card-type">
+            <text class="card-type-icon" wx:if="{{item.vehicleType === 'small'}}">S</text>
+            <text class="card-type-icon" wx:if="{{item.vehicleType === 'medium'}}">M</text>
+            <text class="card-type-icon" wx:if="{{item.vehicleType === 'large'}}">L</text>
+            <text class="card-type-name">{{item.vehicleType === 'small' ? '小型车' : item.vehicleType === 'medium' ? '中型车' : '大型车'}}</text>
+          </view>
+          <view class="card-status {{item.status}}">
+            <text wx:if="{{item.status === 'unused'}}">可使用</text>
+            <text wx:if="{{item.status === 'used'}}">已使用</text>
+            <text wx:if="{{item.status === 'expired'}}">已过期</text>
+          </view>
+        </view>
+        <view class="card-bottom">
+          <view class="card-info">
+            <text class="card-no">卡号：{{item.cardNo}}</text>
+            <text class="card-uses">剩余次数：{{item.totalUses - item.usedCount}}/{{item.totalUses}}</text>
+          </view>
+          <view class="card-price">
+            <text class="price-num">{{item.price}}</text>
+            <text class="price-unit">元</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="empty-cards" wx:if="{{cards.length === 0}}">
+      <view class="empty-icon-small"></view>
+      <text class="empty-text-small">暂无服务卡</text>
+    </view>
+  </view>
+
+  <!-- 菜单列表 -->
+  <view class="section">
+    <view class="menu-list">
+      <view class="menu-item" wx:for="{{menuList}}" wx:key="name" bindtap="onMenuTap" data-path="{{item.path}}">
+        <view class="menu-icon-wrap">
+          <view class="menu-icon icon-{{item.icon}}">
+            <view class="menu-icon-inner icon-{{item.icon}}-inner"></view>
+          </view>
+        </view>
+        <view class="menu-content">
+          <text class="menu-name">{{item.name}}</text>
+          <text class="menu-desc">{{item.desc}}</text>
+        </view>
+        <view class="menu-arrow">></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部信息 -->
+  <view class="footer-info">
+    <text class="footer-title">绵阳24小时新能源应急充电救援</text>
+    <text class="footer-text">60kW直流移动充电救援 | 服务区域：绵阳及周边30公里</text>
+    <text class="footer-text">救援电话：15228301555 | 7x24小时全年无休</text>
+  </view>
+</view>
+
+<!-- 登录弹窗 -->
+<view class="login-modal-mask" wx:if="{{showLoginModal}}" catchtap="onCloseLogin">
+  <view class="login-modal" catchtap="stopPropagation">
+    <view class="login-modal-bg-glow"></view>
+    
+    <!-- 关闭按钮 -->
+    <view class="login-close" catchtap="onCloseLogin">
+      <view class="close-icon"></view>
+    </view>
+
+    <!-- 标题 -->
+    <view class="login-header">
+      <view class="login-badge">
+        <view class="badge-dot pulse"></view>
+        <text>用户登录</text>
+      </view>
+      <text class="login-title">登录后享受完整服务</text>
+    </view>
+
+    <!-- 头像选择 -->
+    <view class="login-form">
+      <view class="form-item">
+        <text class="form-label">头像</text>
+        <button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+          <image class="avatar-preview" src="{{tempAvatar || '/images/default-avatar.png'}}" mode="aspectFill" wx:if="{{tempAvatar}}"></image>
+          <view class="avatar-placeholder" wx:if="{{!tempAvatar}}">
+            <text>点击选择</text>
+          </view>
+        </button>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">昵称</text>
+        <input
+          class="form-input"
+          type="nickname"
+          placeholder="请输入昵称"
+          placeholder-class="input-placeholder"
+          value="{{tempNickname}}"
+          bindinput="onNicknameInput"
+        />
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">手机号</text>
+        <view class="phone-row">
+          <button class="phone-btn" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber">
+            <view class="phone-btn-content">
+              <text wx:if="{{tempPhone}}">已授权</text>
+              <text wx:if="{{!tempPhone}}">点击授权</text>
+            </view>
+          </button>
+          <text class="phone-or">或</text>
+          <input
+            class="phone-input"
+            type="number"
+            placeholder="手动输入手机号"
+            placeholder-class="input-placeholder"
+            value="{{tempPhone}}"
+            bindinput="onPhoneInput"
+            maxlength="11"
+          />
+        </view>
+      </view>
+    </view>
+
+    <!-- 确认按钮 -->
+    <view class="login-confirm">
+      <button class="btn btn-primary btn-lg btn-block {{!canLogin ? 'btn-disabled' : ''}}" bindtap="onConfirmLogin" loading="{{logging}}" disabled="{{!canLogin}}">
+        {{logging ? '登录中...' : '确认登录'}}
+      </button>
+    </view>
+
+    <!-- 隐私协议 -->
+    <view class="login-privacy">
+      <text>登录即表示同意《用户协议》和《隐私政策》</text>
+    </view>
+  </view>
+</view>

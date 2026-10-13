@@ -1,0 +1,212 @@
+/* pages/wallet/wallet.wxss */
+.wallet-page {
+  min-height: 100vh;
+  background: #0a1628;
+  display: flex;
+  flex-direction: column;
+}
+
+.custom-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: linear-gradient(180deg, #0d1b2e 0%, #0a1628 100%);
+  border-bottom: 1rpx solid #1e3556;
+}
+
+.nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32rpx;
+}
+
+.nav-back { width: 60rpx; }
+.back-icon { font-size: 48rpx; color: #e8eef5; }
+.nav-title-text { font-size: 36rpx; font-weight: 700; color: #e8eef5; }
+.nav-placeholder { width: 60rpx; }
+
+.wallet-scroll { flex: 1; height: 0; }
+
+/* 余额卡片 */
+.balance-card {
+  position: relative;
+  margin: 32rpx;
+  padding: 48rpx 40rpx;
+  background: linear-gradient(135deg, #1a3a5c 0%, #0d2440 100%);
+  border-radius: 28rpx;
+  overflow: hidden;
+  border: 1rpx solid #2a4a6c;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.3);
+}
+
+.balance-bg-decoration {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  overflow: hidden;
+}
+
+.balance-circle-1 {
+  position: absolute;
+  top: -100rpx; right: -60rpx;
+  width: 300rpx; height: 300rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245,158,11,0.15) 0%, transparent 70%);
+}
+
+.balance-circle-2 {
+  position: absolute;
+  bottom: -80rpx; left: -40rpx;
+  width: 200rpx; height: 200rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,212,255,0.1) 0%, transparent 70%);
+}
+
+.balance-info { position: relative; z-index: 1; }
+
+.balance-label { font-size: 26rpx; color: #8ba0b8; display: block; margin-bottom: 16rpx; }
+
+.balance-amount { display: flex; align-items: baseline; margin-bottom: 16rpx; }
+.balance-symbol { font-size: 36rpx; color: #f59e0b; font-weight: 600; }
+.balance-value { font-size: 72rpx; color: #f59e0b; font-weight: 800; line-height: 1; text-shadow: 0 0 30rpx rgba(245,158,11,0.3); }
+
+.balance-total { font-size: 26rpx; color: #5a6a7a; }
+
+.withdraw-btn {
+  position: relative;
+  z-index: 1;
+  margin-top: 32rpx;
+  width: 240rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 700;
+  border-radius: 40rpx;
+  border: none;
+  box-shadow: 0 8rpx 24rpx rgba(245,158,11,0.35);
+}
+.withdraw-btn::after { border: none; }
+
+/* 区块 */
+.section { padding: 0 32rpx; margin-bottom: 32rpx; }
+.section-title { font-size: 32rpx; font-weight: 700; color: #e8eef5; margin-bottom: 24rpx; }
+
+/* 空状态 */
+.empty-state { padding: 80rpx 0; text-align: center; }
+.empty-text { font-size: 28rpx; color: #5a6a7a; }
+
+/* 提现记录列表 */
+.withdrawal-list { display: flex; flex-direction: column; gap: 16rpx; }
+
+.withdrawal-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28rpx 32rpx;
+  background: rgba(255,255,255,0.03);
+  border-radius: 20rpx;
+  border: 1rpx solid #1e3556;
+}
+
+.withdrawal-left { display: flex; flex-direction: column; gap: 8rpx; }
+.withdrawal-amount { font-size: 34rpx; font-weight: 700; color: #e8eef5; }
+.withdrawal-time { font-size: 24rpx; color: #5a6a7a; }
+
+.withdrawal-status { font-size: 26rpx; padding: 8rpx 20rpx; border-radius: 12rpx; }
+.withdrawal-status.pending { color: #f59e0b; background: rgba(245,158,11,0.1); }
+.withdrawal-status.approved { color: #22c55e; background: rgba(34,197,94,0.1); }
+.withdrawal-status.rejected { color: #ef4444; background: rgba(239,68,68,0.1); }
+
+/* 弹窗 */
+.modal-mask {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.modal-content {
+  width: 100%;
+  max-height: 80vh;
+  background: #0d1b2e;
+  border-radius: 32rpx 32rpx 0 0;
+  border-top: 2rpx solid #1e3556;
+  padding: 0 32rpx;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 40rpx 0 24rpx;
+  border-bottom: 1rpx solid #1e3556;
+}
+.modal-title { font-size: 36rpx; font-weight: 700; color: #e8eef5; }
+.modal-close { font-size: 36rpx; color: #5a6a7a; padding: 8rpx; }
+
+.modal-body { padding: 32rpx 0; }
+
+.withdraw-balance {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+  padding: 24rpx 32rpx;
+  background: rgba(255,255,255,0.03);
+  border-radius: 16rpx;
+}
+.withdraw-balance-label { font-size: 28rpx; color: #8b9bb0; }
+.withdraw-balance-value { font-size: 40rpx; font-weight: 700; color: #f59e0b; }
+
+.withdraw-input-box {
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.05);
+  border: 2rpx solid #1e3556;
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+  margin-bottom: 32rpx;
+}
+.withdraw-unit { font-size: 40rpx; color: #f59e0b; font-weight: 700; margin-right: 16rpx; }
+.withdraw-input { flex: 1; height: 100rpx; font-size: 48rpx; color: #e8eef5; font-weight: 700; }
+.withdraw-placeholder { color: #3a4a5a; font-size: 32rpx; font-weight: 400; }
+.withdraw-all { font-size: 28rpx; color: #00d4ff; padding: 8rpx 16rpx; flex-shrink: 0; }
+
+.withdraw-type { margin-bottom: 32rpx; }
+.withdraw-type-title { font-size: 28rpx; color: #8b9bb0; margin-bottom: 16rpx; display: block; }
+.withdraw-type-options { display: flex; gap: 16rpx; }
+.type-option {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 0;
+  border-radius: 12rpx;
+  border: 2rpx solid #1e3556;
+  font-size: 28rpx;
+  color: #8b9bb0;
+}
+.type-option.active {
+  border-color: #f59e0b;
+  color: #f59e0b;
+  background: rgba(245,158,11,0.08);
+}
+
+.withdraw-tip { font-size: 24rpx; color: #5a6a7a; line-height: 1.6; padding: 16rpx 0; }
+
+.modal-footer {
+  display: flex;
+  gap: 16rpx;
+  padding: 24rpx 0 40rpx;
+}
+.modal-btn { flex: 1; }
+
+.btn { height: 88rpx; line-height: 88rpx; border-radius: 44rpx; font-size: 32rpx; font-weight: 700; border: none; }
+.btn::after { border: none; }
+.btn-outline { background: rgba(255,255,255,0.05); color: #8b9bb0; border: 2rpx solid #1e3556; }
+.btn-primary { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff; box-shadow: 0 8rpx 24rpx rgba(245,158,11,0.3); }
+.btn-lg { height: 96rpx; line-height: 96rpx; }

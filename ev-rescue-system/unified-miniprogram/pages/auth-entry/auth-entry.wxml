@@ -1,0 +1,96 @@
+<!-- pages/auth-entry/auth-entry.wxml — 1:1 老 driver login 样式 + 身份2选1 新增唯一例外 -->
+<view class="login-page">
+  <!-- 自定义状态栏占位 -->
+  <view style="height: {{statusBarHeight}}px;"></view>
+
+  <!-- 顶部装饰背景（3 圆：橙 / 青 / 橙，radial-gradient 半透明）-->
+  <view class="bg-decoration">
+    <view class="bg-circle bg-circle-1"></view>
+    <view class="bg-circle bg-circle-2"></view>
+    <view class="bg-circle bg-circle-3"></view>
+  </view>
+
+  <!-- Logo 区域（橙渐变方块 + 闪电 ⚡） -->
+  <view class="logo-section">
+    <view class="logo-icon">
+      <view class="logo-bolt">⚡</view>
+    </view>
+    <view class="logo-title">充电救援</view>
+    <view class="logo-subtitle">统一入口 · 新能源移动充电服务</view>
+    <view class="logo-region">绵阳地区运营</view>
+  </view>
+
+  <!-- 表单区域（半透明玻璃卡片 backdrop-filter） -->
+  <view class="form-section">
+    <view class="form-title">账号注册登录</view>
+
+    <!-- ================ 唯一 UI 新增：身份 2 选 1（用户原话要求合并入口） ================ -->
+    <view class="role-selection">
+      <view class="role-label">请选择使用身份</view>
+      <radio-group class="role-radio-group" bindchange="pickRoleRadio">
+        <label class="role-radio-item {{roleSelected==='user' ? 'active user' : ''}}">
+          <view class="role-radio-icon user-icon">🚗</view>
+          <view class="role-radio-text">
+            <text class="role-radio-name">普通车主</text>
+            <text class="role-radio-desc">呼叫救援 · 支付评价</text>
+          </view>
+          <radio
+            value="user"
+            color="#00d4ff"
+            checked="{{roleSelected === 'user'}}"
+            class="role-radio-dot"
+          />
+        </label>
+        <label class="role-radio-item {{roleSelected==='driver' ? 'active driver' : ''}}">
+          <view class="role-radio-icon driver-icon">🛠️</view>
+          <view class="role-radio-text">
+            <text class="role-radio-name">救援司机</text>
+            <text class="role-radio-desc">接单赚钱 · 收入提现</text>
+          </view>
+          <radio
+            value="driver"
+            color="#f59e0b"
+            checked="{{roleSelected === 'driver'}}"
+            class="role-radio-dot"
+          />
+        </label>
+      </radio-group>
+    </view>
+    <!-- ========================================================================= -->
+
+    <!-- 手机号输入（保留 inputPhone||lastPhone 预填双兜底） -->
+    <view class="input-group">
+      <text class="input-label">手机号</text>
+      <input
+        class="input-field {{phoneError ? 'input-error' : ''}}"
+        type="number"
+        maxlength="11"
+        placeholder="请输入手机号"
+        placeholder-class="placeholder"
+        value="{{inputPhone || lastPhone}}"
+        bindinput="onInputPhone"
+      />
+      <text wx:if="{{phoneError}}" class="error-text">{{phoneError}}</text>
+    </view>
+
+    <!-- 3 个登录按钮（顺序保持用户偏好简单直观：短信 → 微信 → 游客） -->
+    <button class="btn btn-primary btn-lg login-btn {{loading ? 'btn-disabled' : ''}}" bindtap="onTapNextPhone" disabled="{{loading}}">
+      <text wx:if="{{loading}}">处理中...</text>
+      <text wx:else>✉️ 短信验证码登录 / 注册</text>
+    </button>
+
+    <button class="btn btn-wx btn-lg login-btn {{loading ? 'btn-disabled' : ''}}" bindtap="onTapWxLogin" disabled="{{loading}}">
+      <text class="wx-icon">💬</text>
+      <text>微信一键登录</text>
+    </button>
+
+    <button class="btn btn-outline btn-lg login-btn" bindtap="onTapGuest">
+      <text>先逛逛 · 游客模式</text>
+    </button>
+
+    <!-- 提示信息 -->
+    <view class="login-tips">
+      <text class="tip-text">新老用户共用同一手机号，首次选择身份后自动开通对应角色</text>
+    </view>
+  </view>
+</view>

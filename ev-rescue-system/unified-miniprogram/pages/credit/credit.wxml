@@ -1,0 +1,28 @@
+<view class="page">
+  <view class="hero">
+    <view class="label">当前信用积分</view>
+    <view class="score {{score < 60 ? 'low' : ''}}">{{score}}</view>
+    <view class="tip">
+      <text wx:if="{{score >= 60}}">✅ 可正常呼叫救援</text>
+      <text wx:else>⚠️ 信用分低于{{minScore}}，需完成未付订单或联系客服恢复</text>
+    </view>
+    <view class="bars">
+      <view class="bar"><view class="fill" style="width: {{score > 100 ? 100 : score}}%"></view></view>
+      <view class="markers"><text>0</text><text>60</text><text>100</text></view>
+    </view>
+  </view>
+  <view class="sect">
+    <view class="sect-title">信用规则</view>
+    <view class="row">· 按时支付尾款：<text class="ok">+2</text> 积分</view>
+    <view class="row">· 完成订单并评价：<text class="ok">+1</text> 积分</view>
+    <view class="row">· 24小时内未支付尾款（逃单）：<text class="bad">-30</text> 积分</view>
+    <view class="row">· 无故取消已派单：<text class="bad">-5</text> 积分</view>
+    <view class="row">· 信用低于 <text class="warn">{{minScore}}</text>：暂时无法下单</view>
+  </view>
+  <view class="sect">
+    <view class="sect-title">恢复方式</view>
+    <view class="row">① 完成所有未支付的历史订单（补齐尾款 + 违约金）</view>
+    <view class="row">② 拨打客服热线 15228301555 申请人工调整（需审核）</view>
+    <view class="row">③ 连续完成 N 单按时支付后自动恢复</view>
+  </view>
+</view>

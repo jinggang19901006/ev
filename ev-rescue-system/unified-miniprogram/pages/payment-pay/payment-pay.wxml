@@ -1,0 +1,100 @@
+<view class="page">
+  <view class="head">
+    <view class="stage {{stage==='deposit' ? 'on' : ''}}">
+      <text class="dot">1</text> 押金 {{stage==='deposit' ? '· 当前' : ''}}
+    </view>
+    <view class="arrow">→</view>
+    <view class="stage {{stage==='final' ? 'on' : ''}}">
+      <text class="dot">2</text> 完成服务 · 尾款 {{stage==='final' ? '· 当前' : ''}}
+    </view>
+  </view>
+
+  <view wx:if="{{escapeHint}}" class="warn">{{escapeHint}}</view>
+
+  <block wx:if="{{summary}}">
+    <view class="sect">
+      <view class="sect-title">订单信息</view>
+      <view class="kv"><text>车型</text><text>{{summary.vehicle_size_cn}}</text></view>
+      <view class="kv"><text>时段</text><text>{{summary.order.time_type === 'night' ? '夜间(21-08点)' : '日间'}}</text></view>
+      <view class="kv"><text>距离</text><text>{{summary.order.distance_km}} 公里</text></view>
+      <view class="kv"><text>状态</text>
+        <text class="st st-{{summary.order.deposit_status}}">押金:{{summary.order.deposit_status==='paid' ? '已支付' : (summary.order.deposit_status==='refunded' ? '已退还' : '待支付')}}</text>
+      </view>
+    </view>
+
+    <view class="sect">
+      <view class="sect-title">金额明细</view>
+      <view class="kv"><text>救援总金额</text><text class="muted">¥{{summary.order.total_amount}}</text></view>
+      <view class="kv"><text>押金 ({{summary.deposit_ratio * 100}}%，最低¥{{summary.deposit_min}})</text><text class="warn2">-¥{{summary.deposit_amount}}</text></view>
+
+      <block wx:if="{{stage==='final'}}">
+        <view class="kv"><text>押金抵扣</text><text class="ok">-¥{{summary.deposit_amount}}</text></view>
+        <block wx:if="{{selectedCardId && useCoupon}}">
+          <block wx:for="{{cardList}}" wx:key="id">
+            <view wx:if="{{item.id === selectedCardId}}" class="kv">
+              <text>服务卡抵扣({{item.code}})</text>
+              <text class="ok">-¥{{item.discount_amount}}</text>
+            </view>
+          </block>
+        </block>
+        <view class="kv total"><text>本次应付尾款</text><text class="big">¥{{summary.final_pay_amount}}</text></view>
+      </block>
+      <block wx:else>
+        <view class="kv total"><text>本次应付押金</text><text class="big">¥{{summary.deposit_amount}}</text></view>
+      </block>
+    </view>
+
+    <!-- 需求4：服务卡选择（仅尾款阶段显示） -->
+    <block wx:if="{{stage==='final' && cardList.length}}">
+      <view class="sect">
+        <view class="sect-title">可用服务卡 · 点击选择（可跳过）</view>
+        <view class="card-row"
+          wx:for="{{cardList}}" wx:key="id"
+          bindtap="pickCard" data-id="{{item.id}}">
+          <view class="card {{selectedCardId === item.id ? 'on' : ''}}">
+            <view class="card-top">
+              <view class="name">{{item.name}}</view>
+              <view class="discount">-¥{{item.discount_amount}}</view>
+            </view>
+            <view class="card-bottom">
+              <text>{{item.code}}</text>
+              <text>有效期至 {{item.expires_at}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="switch-row" bindtap="toggleCoupon">
+          <text>使用服务卡抵扣尾款</text>
+          <view class="sw {{useCoupon ? 'on':''}}"><view class="pt"></view></view>
+        </view>
+      </view>
+    </block>
+
+    <!-- 押金已支付态：不可重复支付 -->
+    <view wx:if="{{stage==='deposit' && summary.order.deposit_status==='paid'}}" class="pay-btn">
+      <view class="paid-box">
+        <view class="paid-ic">✓</view>
+        <view class="paid-tx">押金已支付 ¥{{summary.deposit_amount}}</view>
+        <view class="paid-sub">订单已进入派单队列，请耐心等待司机接单；服务完成后可在订单页支付尾款</view>
+      </view>
+      <button class="btn primary" bindtap="goOrders">查看我的订单</button>
+    </view>
+
+    <!-- 尾款已结清态：不可重复支付 -->
+    <view wx:elif="{{stage==='final' && summary.order.payment_status==='paid'}}" class="pay-btn">
+      <view class="paid-box">
+        <view class="paid-ic">✓</view>
+        <view class="paid-tx">订单已结清</view>
+        <view class="paid-sub">尾款已支付完成，感谢您的使用</view>
+      </view>
+      <button class="btn primary" bindtap="goOrders">查看我的订单</button>
+    </view>
+
+    <!-- 待支付态 -->
+    <view wx:else class="pay-btn">
+      <button class="btn primary" loading="{{paying}}" bindtap="{{stage === 'deposit' ? 'payDeposit' : 'payFinal'}}">
+        确认{{stage==='deposit' ? '支付押金' : '支付尾款'}}
+      </button>
+      <view class="hint">开发环境：点击即 mock 支付；上线切微信支付/支付宝需配置商户号。逃单将影响信用并扣30积分。</view>
+    </view>
+  </block>
+</view>

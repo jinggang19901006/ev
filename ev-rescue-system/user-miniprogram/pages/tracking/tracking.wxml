@@ -1,0 +1,292 @@
+<!-- pages/tracking/tracking.wxml - 订单追踪页 -->
+<view class="container">
+  <!-- 自定义导航栏 -->
+  <view class="nav-bar" style="height: {{statusBarHeight + 44}}px;">
+    <view class="nav-status" style="height: {{statusBarHeight}}px;"></view>
+    <view class="nav-content">
+      <view class="nav-back" bindtap="onBack">
+        <view class="back-arrow"></view>
+      </view>
+      <text class="nav-title">订单追踪</text>
+      <view class="nav-placeholder"></view>
+    </view>
+  </view>
+  <view style="height: {{statusBarHeight + 44}}px;"></view>
+
+  <!-- 加载中 -->
+  <view class="loading-state" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 订单内容 -->
+  <block wx:if="{{order && !loading}}">
+    <!-- 订单状态横幅 -->
+    <view class="status-banner {{order.status === 'cancelled' ? 'cancelled' : order.status === 'completed' ? 'completed' : ''}}">
+      <view class="status-banner-bg"></view>
+      <view class="status-banner-content">
+        <view class="status-icon-wrap" wx:if="{{order.status !== 'cancelled'}}">
+          <view class="status-icon pulse" wx:if="{{order.status === 'pending'}}"></view>
+          <view class="status-icon en-route" wx:if="{{order.status === 'accepted' || order.status === 'en_route'}}"></view>
+          <view class="status-icon arrived" wx:if="{{order.status === 'arrived'}}"></view>
+          <view class="status-icon charging" wx:if="{{order.status === 'charging'}}"></view>
+          <view class="status-icon completed" wx:if="{{order.status === 'completed'}}"></view>
+        </view>
+        <view class="status-text-wrap">
+          <text class="status-main" wx:if="{{order.status === 'pending'}}">等待救援员接单</text>
+          <text class="status-main" wx:if="{{order.status === 'accepted'}}">救援员已接单</text>
+          <text class="status-main" wx:if="{{order.status === 'en_route'}}">救援车正在前往</text>
+          <text class="status-main" wx:if="{{order.status === 'arrived'}}">救援车已到达</text>
+          <text class="status-main" wx:if="{{order.status === 'charging'}}">正在充电中</text>
+          <text class="status-main" wx:if="{{order.status === 'completed'}}">服务已完成</text>
+          <text class="status-main" wx:if="{{order.status === 'cancelled'}}">订单已取消</text>
+
+          <text class="status-sub" wx:if="{{order.status === 'pending'}}">正在为您匹配最近的救援车辆...</text>
+          <text class="status-sub" wx:if="{{order.status === 'accepted'}}">救援员正在准备出发</text>
+          <text class="status-sub" wx:if="{{order.status === 'en_route'}}">救援车正在赶来您的位置</text>
+          <text class="status-sub" wx:if="{{order.status === 'arrived'}}">救援车已到达，准备开始充电</text>
+          <text class="status-sub" wx:if="{{order.status === 'charging'}}">60kW直流快充进行中</text>
+          <text class="status-sub" wx:if="{{order.status === 'completed'}}">感谢您的使用</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 状态进度条 -->
+    <view class="progress-section" wx:if="{{order.status !== 'cancelled'}}">
+      <view class="progress-track">
+        <view class="progress-line {{currentStep > index ? 'active' : ''}}" wx:for="{{statusSteps}}" wx:key="key" wx:for-item="step" wx:for-index="index" style="left: {{index * 20}}%; width: 20%;"></view>
+      </view>
+      <view class="progress-steps">
+        <view class="progress-step" wx:for="{{statusSteps}}" wx:key="key" wx:for-item="step" wx:for-index="index">
+          <view class="step-dot {{currentStep >= index ? 'active' : ''}} {{currentStep === index ? 'current' : ''}}">
+            <view class="step-dot-inner" wx:if="{{currentStep > index}}"></view>
+          </view>
+          <text class="step-label {{currentStep >= index ? 'active' : ''}}">{{step.label}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 地图 -->
+    <view class="map-section" wx:if="{{hasLocation}}">
+      <map
+        class="order-map"
+        latitude="{{order.pickup_lat}}"
+        longitude="{{order.pickup_lng}}"
+        scale="15"
+        markers="{{markers}}"
+        show-location
+      ></map>
+    </view>
+
+    <!-- 救援员信息 -->
+    <view class="driver-card" wx:if="{{order.driver_name}}">
+      <view class="driver-info">
+        <view class="driver-avatar">
+          <text class="avatar-text">{{order.driver_name}}</text>
+        </view>
+        <view class="driver-details">
+          <view class="driver-name-row">
+            <text class="driver-name">{{order.driver_name}}</text>
+            <view class="driver-rating" wx:if="{{order.driver_rating}}">
+              <view class="star-icon"></view>
+              <text class="rating-text">{{order.driver_rating}}</text>
+            </view>
+          </view>
+          <text class="driver-tag">救援员</text>
+        </view>
+      </view>
+      <view class="driver-call-btn" bindtap="onCallDriver">
+        <view class="call-icon-circle">
+          <view class="call-icon"></view>
+        </view>
+        <text class="call-text">联系</text>
+      </view>
+    </view>
+
+    <!-- 订单详情 -->
+    <view class="detail-card">
+      <view class="detail-header">
+        <text class="detail-title">订单详情</text>
+        <text class="order-no">No.{{order.order_no}}</text>
+      </view>
+
+      <view class="detail-row">
+        <text class="detail-label">车型</text>
+        <text class="detail-value" wx:if="{{order.vehicle_type === 'small'}}">小型车</text>
+        <text class="detail-value" wx:if="{{order.vehicle_type === 'medium'}}">中型车(4.2米货车)</text>
+        <text class="detail-value" wx:if="{{order.vehicle_type === 'large'}}">大型车(重卡)</text>
+      </view>
+
+      <view class="detail-row" wx:if="{{order.vehicle_plate}}">
+        <text class="detail-label">车牌号</text>
+        <text class="detail-value">{{order.vehicle_plate}}</text>
+      </view>
+
+      <view class="detail-row">
+        <text class="detail-label">剩余电量</text>
+        <text class="detail-value">{{order.battery_percent}}%</text>
+      </view>
+
+      <view class="detail-row" wx:if="{{order.dashboard_off}}">
+        <text class="detail-label">仪表盘</text>
+        <text class="detail-value text-danger">不亮(完全亏电)</text>
+      </view>
+
+      <view class="detail-row">
+        <text class="detail-label">救援地址</text>
+        <text class="detail-value addr">{{order.pickup_address}}</text>
+      </view>
+
+      <view class="detail-row" wx:if="{{order.pickup_description}}">
+        <text class="detail-label">位置说明</text>
+        <text class="detail-value">{{order.pickup_description}}</text>
+      </view>
+
+      <view class="detail-divider"></view>
+
+      <view class="detail-row">
+        <text class="detail-label">基础费用</text>
+        <text class="detail-value">{{order.base_price}}元</text>
+      </view>
+      <view class="detail-row" wx:if="{{order.distance_fee > 0}}">
+        <text class="detail-label">里程费</text>
+        <text class="detail-value">{{order.distance_fee}}元</text>
+      </view>
+      <view class="detail-row" wx:if="{{order.extra_fee > 0}}">
+        <text class="detail-label">额外费用</text>
+        <text class="detail-value">{{order.extra_fee}}元</text>
+      </view>
+      <view class="detail-row" wx:if="{{order.is_night}}">
+        <text class="detail-label">时段</text>
+        <text class="detail-value text-warning">夜间</text>
+      </view>
+
+      <view class="detail-divider"></view>
+
+      <view class="detail-total">
+        <text class="total-label">合计</text>
+        <view class="total-amount">
+          <text class="total-currency">￥</text>
+          <text class="total-value">{{order.total_price}}</text>
+        </view>
+      </view>
+      <view class="payment-status {{order.payment_status}}" wx:if="{{order.status === 'completed'}}">
+        <view class="pay-dot {{order.payment_status === 'paid' ? 'paid' : 'unpaid'}}"></view>
+        <text>{{order.payment_status === 'paid' ? '已支付' : '待支付'}}</text>
+      </view>
+    </view>
+
+    <!-- 时间线 -->
+    <view class="timeline-card">
+      <view class="timeline-item" wx:if="{{order.created_at}}">
+        <view class="timeline-dot"></view>
+        <view class="timeline-content">
+          <text class="timeline-label">下单时间</text>
+          <text class="timeline-time">{{order.created_at}}</text>
+        </view>
+      </view>
+      <view class="timeline-item" wx:if="{{order.arrive_time}}">
+        <view class="timeline-dot arrived"></view>
+        <view class="timeline-content">
+          <text class="timeline-label">到达时间</text>
+          <text class="timeline-time">{{order.arrive_time}}</text>
+        </view>
+      </view>
+      <view class="timeline-item" wx:if="{{order.charging_start_time}}">
+        <view class="timeline-dot charging"></view>
+        <view class="timeline-content">
+          <text class="timeline-label">开始充电</text>
+          <text class="timeline-time">{{order.charging_start_time}}</text>
+        </view>
+      </view>
+      <view class="timeline-item" wx:if="{{order.charging_end_time}}">
+        <view class="timeline-dot completed"></view>
+        <view class="timeline-content">
+          <text class="timeline-label">充电完成</text>
+          <text class="timeline-time">{{order.charging_end_time}}</text>
+        </view>
+      </view>
+      <view class="timeline-item" wx:if="{{order.complete_time}}">
+        <view class="timeline-dot completed"></view>
+        <view class="timeline-content">
+          <text class="timeline-label">订单完成</text>
+          <text class="timeline-time">{{order.complete_time}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="action-section">
+      <!-- 待接单/已接单：取消按钮 -->
+      <button class="btn btn-danger btn-lg" bindtap="onCancelOrder" wx:if="{{order.status === 'pending' || order.status === 'accepted'}}">
+        取消订单
+      </button>
+
+      <!-- 前往中/已到达：联系救援员 -->
+      <button class="btn btn-primary btn-lg" bindtap="onCallDriver" wx:if="{{order.status === 'en_route' || order.status === 'arrived'}}">
+        联系救援员
+      </button>
+
+      <!-- 充电中：等待提示 -->
+      <view class="charging-hint" wx:if="{{order.status === 'charging'}}">
+        <view class="charging-dot pulse"></view>
+        <text>正在充电中，请耐心等待</text>
+      </view>
+
+      <!-- 已完成且未支付：支付按钮 -->
+      <button class="btn btn-success btn-lg" bindtap="onPayOrder" wx:if="{{order.status === 'completed' && order.payment_status !== 'paid'}}">
+        立即支付 ￥{{order.total_price}}
+      </button>
+
+      <!-- 已完成且已支付且未评价：评价按钮 -->
+      <button class="btn btn-primary btn-lg" bindtap="onShowRateModal" wx:if="{{order.status === 'completed' && order.payment_status === 'paid' && !order.user_rating}}">
+        评价服务
+      </button>
+
+      <!-- 已评价：显示评价 -->
+      <view class="rated-section" wx:if="{{order.status === 'completed' && order.user_rating}}">
+        <view class="rated-stars">
+          <view class="star-filled" wx:for="{{[1,2,3,4,5]}}" wx:key="*this" wx:for-item="star" wx:for-index="si">
+            <view class="star {{si < order.user_rating ? 'active' : ''}}"></view>
+          </view>
+        </view>
+        <text class="rated-comment" wx:if="{{order.user_comment}}">{{order.user_comment}}</text>
+      </view>
+
+      <!-- 联系客服 -->
+      <button class="btn btn-outline btn-sm" bindtap="onCallService">
+        联系客服
+      </button>
+    </view>
+  </block>
+
+  <!-- 评价弹窗 -->
+  <view class="rate-mask" wx:if="{{showRateModal}}" bindtap="onCloseRateModal">
+    <view class="rate-modal" catchtap="stopPropagation">
+      <view class="rate-modal-header">
+        <text class="rate-modal-title">评价救援服务</text>
+        <view class="rate-close" bindtap="onCloseRateModal">
+          <view class="close-icon"></view>
+        </view>
+      </view>
+
+      <view class="rate-stars">
+        <view class="rate-star-wrap" wx:for="{{[1,2,3,4,5]}}" wx:key="*this" wx:for-item="star" wx:for-index="si" data-rating="{{star}}" bindtap="onChooseRating">
+          <view class="rate-star {{si < rating ? 'active' : ''}}"></view>
+        </view>
+      </view>
+      <text class="rate-text">{{rating === 1 ? '很不满意' : rating === 2 ? '不满意' : rating === 3 ? '一般' : rating === 4 ? '满意' : '非常满意'}}</text>
+
+      <textarea
+        class="rate-textarea"
+        placeholder="说点什么吧（选填）"
+        placeholder-class="placeholder"
+        value="{{comment}}"
+        bindinput="onCommentInput"
+        maxlength="200"
+      />
+
+      <button class="btn btn-primary btn-lg btn-block" bindtap="onSubmitRating">提交评价</button>
+    </view>
+  </view>
+</view>

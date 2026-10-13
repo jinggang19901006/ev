@@ -1,0 +1,259 @@
+<!-- pages/order/order.wxml - 下单页 -->
+<view class="container">
+  <!-- 自定义导航栏 -->
+  <view class="nav-bar" style="height: {{statusBarHeight + 44}}px;">
+    <view class="nav-status" style="height: {{statusBarHeight}}px;"></view>
+    <view class="nav-content">
+      <view class="nav-back" bindtap="onBack">
+        <view class="back-arrow"></view>
+      </view>
+      <text class="nav-title">呼叫救援</text>
+      <view class="nav-placeholder"></view>
+    </view>
+  </view>
+
+  <!-- 占位 -->
+  <view style="height: {{statusBarHeight + 44}}px;"></view>
+
+  <!-- 夜间提示 -->
+  <view class="night-banner" wx:if="{{isNight}}">
+    <view class="night-banner-dot"></view>
+    <text>当前为夜间时段（22:00-06:00），执行夜间价格</text>
+  </view>
+
+  <!-- 步骤1：选择车型 -->
+  <view class="form-section">
+    <view class="section-header">
+      <view class="step-num">1</view>
+      <text class="section-label">选择车型</text>
+    </view>
+    <view class="vehicle-types">
+      <view
+        class="vehicle-card {{selectedTypeIndex === index ? 'active' : ''}}"
+        wx:for="{{vehicleTypes}}"
+        wx:key="type"
+        data-index="{{index}}"
+        bindtap="selectVehicleType"
+      >
+        <view class="vehicle-card-top">
+          <view class="vehicle-badge {{item.type}}">
+            <text wx:if="{{item.type === 'small'}}">S</text>
+            <text wx:if="{{item.type === 'medium'}}">M</text>
+            <text wx:if="{{item.type === 'large'}}">L</text>
+          </view>
+          <view class="vehicle-card-info">
+            <text class="vehicle-card-name">{{item.name}}</text>
+            <text class="vehicle-card-desc">{{item.desc}}</text>
+          </view>
+          <view class="vehicle-check" wx:if="{{selectedTypeIndex === index}}">
+            <view class="check-icon"></view>
+          </view>
+        </view>
+        <view class="vehicle-card-price">
+          <view class="vcp-item">
+            <text class="vcp-label">白天</text>
+            <text class="vcp-value">{{item.dayPrice}}</text>
+            <text class="vcp-unit">元</text>
+          </view>
+          <view class="vcp-item {{isNight ? 'active' : ''}}">
+            <text class="vcp-label">夜间</text>
+            <text class="vcp-value">{{item.nightPrice}}</text>
+            <text class="vcp-unit">元</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 步骤2：车辆信息 -->
+  <view class="form-section">
+    <view class="section-header">
+      <view class="step-num">2</view>
+      <text class="section-label">车辆信息</text>
+    </view>
+
+    <view class="card">
+      <!-- 车牌号 -->
+      <view class="form-row">
+        <text class="form-label">车牌号</text>
+        <input
+          class="form-input"
+          placeholder="请输入车牌号（选填）"
+          placeholder-class="placeholder"
+          value="{{vehiclePlate}}"
+          bindinput="onPlateInput"
+          maxlength="10"
+        />
+      </view>
+
+      <view class="form-divider"></view>
+
+      <!-- 剩余电量 -->
+      <view class="form-row">
+        <text class="form-label">剩余电量</text>
+        <text class="battery-value">{{batteryPercent}}%</text>
+      </view>
+      <slider
+        class="battery-slider"
+        min="0"
+        max="100"
+        value="{{batteryPercent}}"
+        activeColor="#00d4ff"
+        backgroundColor="#1e3556"
+        block-color="#00d4ff"
+        block-size="24"
+        bindchange="onBatteryChange"
+      />
+
+      <view class="form-divider"></view>
+
+      <!-- 仪表盘是否不亮 -->
+      <view class="form-row">
+        <view class="dashboard-off-info">
+          <text class="form-label">仪表盘是否不亮</text>
+          <text class="form-hint">完全亏电请打开此开关</text>
+        </view>
+        <switch
+          checked="{{dashboardOff}}"
+          bindchange="onDashboardOffChange"
+          color="#ef4444"
+        />
+      </view>
+      <view class="dashboard-warning" wx:if="{{dashboardOff}}">
+        <view class="warning-dot pulse"></view>
+        <text>车辆完全亏电，救援人员将优先处理</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 步骤3：救援地址 -->
+  <view class="form-section">
+    <view class="section-header">
+      <view class="step-num">3</view>
+      <text class="section-label">救援地址</text>
+    </view>
+
+    <view class="card">
+      <!-- 地址选择按钮 -->
+      <view class="address-picker" bindtap="chooseLocation">
+        <view class="address-picker-icon">
+          <view class="pin-icon"></view>
+        </view>
+        <view class="address-picker-text" wx:if="{{pickupAddress}}">
+          <text class="address-text">{{pickupAddress}}</text>
+        </view>
+        <view class="address-picker-text" wx:else>
+          <text class="address-placeholder">点击选择救援位置</text>
+        </view>
+        <view class="address-picker-arrow">
+          <text>></text>
+        </view>
+      </view>
+
+      <view class="form-divider"></view>
+
+      <!-- 手动输入地址 -->
+      <view class="form-row">
+        <text class="form-label">详细地址</text>
+        <input
+          class="form-input"
+          placeholder="或手动输入地址"
+          placeholder-class="placeholder"
+          value="{{pickupAddress}}"
+          bindinput="onAddressInput"
+        />
+      </view>
+
+      <view class="form-divider"></view>
+
+      <!-- 地址描述 -->
+      <view class="form-row col">
+        <text class="form-label">位置补充说明</text>
+        <textarea
+          class="form-textarea"
+          placeholder="如：XX路口红绿灯旁、XX小区南门等"
+          placeholder-class="placeholder"
+          value="{{pickupDescription}}"
+          bindinput="onDescriptionInput"
+          maxlength="200"
+        />
+      </view>
+
+      <view class="form-divider"></view>
+
+      <!-- 距离 -->
+      <view class="form-row">
+        <text class="form-label">距离(公里)</text>
+        <input
+          class="form-input"
+          type="digit"
+          placeholder="预估距离"
+          placeholder-class="placeholder"
+          value="{{distanceKm}}"
+          bindinput="onDistanceInput"
+        />
+      </view>
+
+      <view class="form-divider"></view>
+
+      <!-- 额外费用 -->
+      <view class="form-row">
+        <text class="form-label">额外费用(元)</text>
+        <input
+          class="form-input"
+          type="digit"
+          placeholder="高速费/停车费等(选填)"
+          placeholder-class="placeholder"
+          value="{{extraFee}}"
+          bindinput="onExtraFeeInput"
+        />
+      </view>
+    </view>
+  </view>
+
+  <!-- 价格预估 -->
+  <view class="estimate-card" wx:if="{{estimate}}">
+    <view class="estimate-header">
+      <text class="estimate-title">费用预估</text>
+      <view class="estimate-night-badge" wx:if="{{estimate.isNight}}">
+        <text>夜间</text>
+      </view>
+    </view>
+    <view class="estimate-body">
+      <view class="estimate-row">
+        <text class="estimate-label">基础费用（{{estimate.baseDistance}}公里内）</text>
+        <text class="estimate-value">{{estimate.basePrice}}元</text>
+      </view>
+      <view class="estimate-row" wx:if="{{estimate.distanceFee > 0}}">
+        <text class="estimate-label">超出里程费（{{estimate.extraPerKm}}元/公里）</text>
+        <text class="estimate-value">{{estimate.distanceFee}}元</text>
+      </view>
+      <view class="estimate-row" wx:if="{{estimate.extraFee > 0}}">
+        <text class="estimate-label">额外费用</text>
+        <text class="estimate-value">{{estimate.extraFee}}元</text>
+      </view>
+      <view class="estimate-divider"></view>
+      <view class="estimate-total">
+        <text class="total-label">预估总价</text>
+        <view class="total-amount">
+          <text class="total-currency">￥</text>
+          <text class="total-value">{{estimate.totalPrice}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="estimate-note">
+      <text>*最终费用以实际服务为准，高速费/停车费据实收取</text>
+    </view>
+  </view>
+
+  <!-- 确认下单按钮 -->
+  <view class="submit-section">
+    <view class="submit-summary" wx:if="{{estimate}}">
+      <text class="summary-label">预估费用</text>
+      <text class="summary-price">￥{{estimate.totalPrice}}</text>
+    </view>
+    <button class="btn btn-primary btn-lg submit-btn {{submitting ? 'btn-disabled' : ''}}" bindtap="onSubmitOrder" disabled="{{submitting}}">
+      <text>{{submitting ? '提交中...' : '确认呼叫救援'}}</text>
+    </button>
+  </view>
+</view>

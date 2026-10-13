@@ -1,0 +1,18 @@
+.page { background:#0a1628; min-height:100vh; color:#fff; padding-bottom:60rpx;}
+.tabs { display:flex; background:#10233e; border-radius:14rpx; margin: 24rpx; }
+.tab { flex:1; text-align:center; padding: 22rpx 0; font-size:26rpx; color:#8aa0bf; }
+.tab.on { background: linear-gradient(90deg,#00d4ff,#3b82f6); color:#fff; border-radius:14rpx; font-weight:500;}
+.wrap { padding: 0 24rpx; }
+.card { display:flex; gap: 20rpx; margin-bottom: 20rpx; border-radius:18rpx; overflow:hidden; background: linear-gradient(135deg,#fef3c7,#fbbf24); color:#5b3a00;}
+.left { width:220rpx; padding: 28rpx 20rpx; display:flex; flex-direction:column; justify-content:center; align-items:center; background: linear-gradient(180deg, rgba(255,255,255,0.4), rgba(255,255,255,0.05));}
+.discount { font-size:52rpx; font-weight:700;}
+.code { margin-top: 10rpx; font-size:22rpx; opacity:0.8; letter-spacing: 1rpx;}
+.right { flex:1; padding:22rpx 20rpx 22rpx 0; display:flex; flex-direction:column; justify-content:center;}
+.name { font-weight:600; font-size:30rpx;}
+.line { font-size:24rpx; margin-top:6rpx; opacity:0.85;}
+.state-unused, .state-active { color: #065f46;}
+.state-used, .state-redeemed { color: #7f1d1d;}
+.state-expired { color:#4b5563;}
+.empty { text-align:center; margin-top: 160rpx; color:#8aa0bf;}
+.empty .emoji { font-size: 96rpx; }
+.empty .txt { font-size:26rpx; margin-top: 14rpx;}

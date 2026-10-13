@@ -1,0 +1,40 @@
+{
+  "pages": [
+    "pages/orders/orders",
+    "pages/mine/mine",
+    "pages/login/login",
+    "pages/detail/detail",
+    "pages/wallet/wallet"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#0a1628",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "充电救援·司机端",
+    "backgroundColor": "#0a1628",
+    "backgroundTextStyle": "light",
+    "enablePullDownRefresh": false
+  },
+  "tabBar": {
+    "color": "#5a6a7a",
+    "selectedColor": "#f59e0b",
+    "backgroundColor": "#0d1b2e",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/orders/orders",
+        "text": "订单大厅",
+        "iconPath": "assets/tab-orders.png",
+        "selectedIconPath": "assets/tab-orders-active.png"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的",
+        "iconPath": "assets/tab-mine.png",
+        "selectedIconPath": "assets/tab-mine-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

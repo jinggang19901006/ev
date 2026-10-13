@@ -1,0 +1,618 @@
+{
+  "data": {
+    "users": [
+      {
+        "id": 1,
+        "openid": "mock_263a58abeb3de05385a9",
+        "phone": "13800002222",
+        "nickname": "烟测用户A",
+        "avatar": "",
+        "total_orders": 3,
+        "total_spent": 189,
+        "created_at": "2026-08-28 09:45:19",
+        "unpaid_orders_count": 1,
+        "credit_score": 100
+      }
+    ],
+    "drivers": [
+      {
+        "id": 1,
+        "openid": "mock_508d647e3a4978195089",
+        "phone": "13800138001",
+        "name": "救援司机",
+        "avatar": "",
+        "id_card_no": "",
+        "status": "online",
+        "approved": 1,
+        "rating": 5,
+        "total_orders": 1,
+        "total_earnings": 151.2,
+        "wallet_balance": 151.2,
+        "level_id": 1,
+        "accept_count_7d": 3,
+        "last_order_at": "2026-09-01 01:53:29",
+        "lat": 31.47,
+        "lng": 104.74,
+        "created_at": "2026-08-28 09:56:25"
+      }
+    ],
+    "orders": [
+      {
+        "order_no": "EV202609010953297612",
+        "user_id": 1,
+        "vehicle_type": "small",
+        "vehicle_plate": "验A0001",
+        "battery_percent": 12,
+        "dashboard_off": 0,
+        "pickup_lat": 31.46,
+        "pickup_lng": 104.73,
+        "pickup_address": "验收测试-涪城区富乐山南路",
+        "pickup_description": "",
+        "distance_km": 6,
+        "base_price": 168,
+        "distance_fee": 6,
+        "extra_fee": 15,
+        "total_price": 189,
+        "is_night": 0,
+        "deposit_amount": 52.2,
+        "deposit_status": "paid",
+        "id": 4,
+        "created_at": "2026-09-01 01:53:29",
+        "status": "completed",
+        "payment_status": "unpaid",
+        "user_rating": null,
+        "user_comment": "",
+        "final_pay_amount": 0,
+        "card_discount_amount": 0,
+        "use_card_id": null,
+        "dispatch_mode": "manual",
+        "dispatch_candidates": "",
+        "driver_id": 1,
+        "start_time": "2026-09-01 01:53:30",
+        "dispatch_time": "2026-09-01 01:53:30",
+        "before_photo": "/uploads/verify-before.jpg",
+        "arrive_time": "2026-09-01 01:53:31",
+        "charging_start_time": "2026-09-01 01:53:32",
+        "after_photo": "/uploads/verify-after.jpg",
+        "fee_remark": "验收测试加项",
+        "charging_end_time": "2026-09-01 01:53:33",
+        "complete_time": "2026-09-01 01:53:33",
+        "driver_income": 151.2,
+        "platform_income": 37.8
+      }
+    ],
+    "pricing_config": [
+      {
+        "id": 1,
+        "vehicle_type": "small",
+        "vehicle_name": "小型轿车(A级)",
+        "day_price": 168,
+        "night_price": 198,
+        "base_distance_km": 5,
+        "extra_per_km": 6,
+        "is_active": 1
+      },
+      {
+        "id": 2,
+        "vehicle_type": "medium",
+        "vehicle_name": "中型轿车/SUV",
+        "day_price": 238,
+        "night_price": 268,
+        "base_distance_km": 5,
+        "extra_per_km": 7,
+        "is_active": 1
+      },
+      {
+        "id": 3,
+        "vehicle_type": "large",
+        "vehicle_name": "大型车(MPV)",
+        "day_price": 328,
+        "night_price": 368,
+        "base_distance_km": 5,
+        "extra_per_km": 10,
+        "is_active": 1
+      }
+    ],
+    "service_cards": [
+      {
+        "id": 1,
+        "card_no": "CARD247734946826",
+        "vehicle_type": "small",
+        "price": 158,
+        "total_uses": 1,
+        "used_count": 0,
+        "status": "unused",
+        "user_id": null,
+        "allocated_by": null,
+        "allocated_at": null,
+        "expired_at": null,
+        "remark": "",
+        "created_admin_id": 1,
+        "created_at": "2026-09-01 01:06:13"
+      },
+      {
+        "id": 2,
+        "card_no": "CARD249407281027",
+        "vehicle_type": "small",
+        "price": 158,
+        "total_uses": 1,
+        "used_count": 0,
+        "status": "unused",
+        "user_id": null,
+        "allocated_by": null,
+        "allocated_at": null,
+        "expired_at": null,
+        "remark": "",
+        "created_admin_id": 1,
+        "created_at": "2026-09-01 01:09:00"
+      },
+      {
+        "id": 3,
+        "card_no": "CARD273292022067",
+        "vehicle_type": "small",
+        "price": 128,
+        "total_uses": 1,
+        "used_count": 0,
+        "status": "unused",
+        "user_id": null,
+        "allocated_by": null,
+        "allocated_at": null,
+        "expired_at": null,
+        "remark": "",
+        "created_admin_id": 1,
+        "created_at": "2026-09-01 01:48:49"
+      },
+      {
+        "id": 4,
+        "card_no": "CARD273954601053",
+        "vehicle_type": "small",
+        "price": 123,
+        "total_uses": 1,
+        "used_count": 0,
+        "status": "unused",
+        "user_id": null,
+        "allocated_by": null,
+        "allocated_at": null,
+        "expired_at": null,
+        "remark": "",
+        "created_admin_id": 1,
+        "created_at": "2026-09-01 01:49:55"
+      }
+    ],
+    "admins": [
+      {
+        "id": 1,
+        "username": "admin",
+        "password": "admin123",
+        "name": "系统管理员",
+        "created_at": "2026-08-28 09:45:16"
+      }
+    ],
+    "system_config": [
+      {
+        "id": 1,
+        "key": "commission_rate",
+        "value": "0.2",
+        "description": "平台抽佣比例(0-1)",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 2,
+        "key": "min_withdraw_amount",
+        "value": "10",
+        "description": "最低提现金额(元)",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 3,
+        "key": "deposit_ratio",
+        "value": "0.3",
+        "description": "下单时预支付押金比例(0-1)，如0.3=30%",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 4,
+        "key": "deposit_min_amount",
+        "value": "50",
+        "description": "押金最低金额(元)，比例计算不足则按此值收取",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 5,
+        "key": "escape_penalty_score",
+        "value": "30",
+        "description": "逃单一次扣信用积分",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 6,
+        "key": "bad_rating_penalty_score",
+        "value": "5",
+        "description": "差评一次扣信用积分（司机端）",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 7,
+        "key": "pay_on_time_bonus_score",
+        "value": "2",
+        "description": "完成服务后24h内支付加信用积分",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 8,
+        "key": "credit_min_to_order",
+        "value": "60",
+        "description": "信用分低于此值禁止下单（需先补交欠款+恢复积分）",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 9,
+        "key": "unpaid_pay_timeout_hours",
+        "value": "24",
+        "description": "订单完成后多少小时未支付判定为逃单",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 10,
+        "key": "sms_mode",
+        "value": "dev",
+        "description": "短信模式：dev=开发固定1234，prod=阿里云短信",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 11,
+        "key": "wx_appid",
+        "value": "",
+        "description": "微信小程序AppID（生产环境必填）",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 12,
+        "key": "wx_appsecret",
+        "value": "",
+        "description": "微信小程序AppSecret（生产环境必填）",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 13,
+        "key": "wx_merchant_id",
+        "value": "",
+        "description": "微信支付商户号（生产环境必填）",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 14,
+        "key": "wx_pay_key",
+        "value": "",
+        "description": "微信支付APIv3密钥（生产环境必填）",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 15,
+        "key": "dispatch_distance_weight",
+        "value": "0.4",
+        "description": "派单权重-距离(越近越高分)",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 16,
+        "key": "dispatch_rating_weight",
+        "value": "0.25",
+        "description": "派单权重-司机评分",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 17,
+        "key": "dispatch_level_weight",
+        "value": "0.2",
+        "description": "派单权重-服务等级(V系数)",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 18,
+        "key": "dispatch_order_weight",
+        "value": "0.15",
+        "description": "派单权重-接单量(近7日，饥饿式分配)",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 19,
+        "key": "dispatch_max_candidates",
+        "value": "10",
+        "description": "派单候选司机最大数量",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 20,
+        "key": "dispatch_max_distance_km",
+        "value": "30",
+        "description": "派单最大半径(公里)",
+        "created_at": "2026-08-28 09:45:16"
+      }
+    ],
+    "withdrawals": [],
+    "unified_accounts": [
+      {
+        "id": 1,
+        "phone": "13800002222",
+        "nickname": "烟测用户A",
+        "avatar": "",
+        "wx_openid": "mock_263a58abeb3de05385a9",
+        "password_hash": null,
+        "status": "active",
+        "user_id": 1,
+        "driver_id": null,
+        "last_login_role": "user",
+        "last_login_at": "2026-09-01 01:53:29",
+        "created_at": "2026-08-28 09:45:19"
+      },
+      {
+        "id": 2,
+        "phone": "13800138001",
+        "nickname": "救援司机",
+        "avatar": "",
+        "wx_openid": "mock_508d647e3a4978195089",
+        "password_hash": null,
+        "status": "active",
+        "user_id": null,
+        "driver_id": 1,
+        "last_login_role": "driver",
+        "last_login_at": "2026-09-01 01:01:51",
+        "created_at": "2026-08-28 09:56:25"
+      }
+    ],
+    "sms_captchas": [
+      {
+        "id": 1,
+        "phone": "13800002222",
+        "scene": "register",
+        "code": "1234",
+        "expired_at": "2026-08-28 17:50:18",
+        "used": 1,
+        "used_at": "2026-08-28 09:45:19",
+        "created_at": "2026-08-28 09:45:18"
+      },
+      {
+        "id": 3,
+        "phone": "13800138001",
+        "scene": "register",
+        "code": "1234",
+        "expired_at": "2026-08-28 18:01:11",
+        "used": 1,
+        "used_at": "2026-08-28 09:56:25",
+        "created_at": "2026-08-28 09:56:11"
+      },
+      {
+        "id": 9,
+        "phone": "13800138111",
+        "scene": "login",
+        "code": "1234",
+        "expired_at": "2026-08-31 10:45:46",
+        "used": 1,
+        "used_at": "2026-08-31 02:40:48",
+        "created_at": "2026-08-31 02:40:46"
+      },
+      {
+        "id": 12,
+        "phone": "13800138001",
+        "scene": "login",
+        "code": "1234",
+        "expired_at": "2026-09-01 09:06:49",
+        "used": 1,
+        "used_at": "2026-09-01 01:01:51",
+        "created_at": "2026-09-01 01:01:49"
+      },
+      {
+        "id": 14,
+        "phone": "13800002222",
+        "scene": "login",
+        "code": "1234",
+        "expired_at": "2026-09-01 09:58:29",
+        "used": 1,
+        "used_at": "2026-09-01 01:53:29",
+        "created_at": "2026-09-01 01:53:29"
+      }
+    ],
+    "payment_records": [
+      {
+        "id": 1,
+        "transaction_id": "PAY17879109404451906",
+        "order_id": 1,
+        "user_id": 1,
+        "driver_id": null,
+        "biz_type": "deposit",
+        "pay_type": "wechat",
+        "pay_channel": "mnp",
+        "amount": 71.4,
+        "status": "paid",
+        "third_party_no": "MOCK_PAY17879109404451906",
+        "refund_amount": 0,
+        "refund_at": null,
+        "remark": "押金，比例0.3,最低50,总额238",
+        "raw_callback": null,
+        "created_at": "2026-08-28 09:55:40",
+        "paid_at": "2026-08-28 09:55:40"
+      },
+      {
+        "id": 2,
+        "transaction_id": "PAY17879146713043153",
+        "order_id": 2,
+        "user_id": 1,
+        "driver_id": 1,
+        "biz_type": "deposit",
+        "pay_type": "wechat",
+        "pay_channel": "mnp",
+        "amount": 113.4,
+        "status": "paid",
+        "third_party_no": "MOCK_PAY17879146713043153",
+        "refund_amount": 0,
+        "refund_at": null,
+        "remark": "押金，比例0.3,最低50,总额378",
+        "raw_callback": null,
+        "created_at": "2026-08-28 10:57:51",
+        "paid_at": "2026-08-28 10:57:51"
+      },
+      {
+        "id": 3,
+        "transaction_id": "PAY17881417173684777",
+        "order_id": 3,
+        "user_id": 1,
+        "driver_id": null,
+        "biz_type": "deposit",
+        "pay_type": "wechat",
+        "pay_channel": "mnp",
+        "amount": 683.4,
+        "status": "paid",
+        "third_party_no": "MOCK_PAY17881417173684777",
+        "refund_amount": 0,
+        "refund_at": null,
+        "remark": "押金，比例0.3,最低50,总额2278",
+        "raw_callback": null,
+        "created_at": "2026-08-31 02:01:57",
+        "paid_at": "2026-08-31 02:01:57"
+      },
+      {
+        "id": 4,
+        "transaction_id": "PAY17882276097699272",
+        "order_id": 4,
+        "user_id": 1,
+        "driver_id": null,
+        "biz_type": "deposit",
+        "pay_type": "wechat",
+        "pay_channel": "mnp",
+        "amount": 52.2,
+        "status": "paid",
+        "third_party_no": "MOCK_PAY17882276097699272",
+        "refund_amount": 0,
+        "refund_at": null,
+        "remark": "押金，比例0.3,最低50,总额174",
+        "raw_callback": null,
+        "created_at": "2026-09-01 01:53:29",
+        "paid_at": "2026-09-01 01:53:29"
+      }
+    ],
+    "credit_scores": [],
+    "card_allocations": [],
+    "card_usages": [],
+    "driver_levels": [
+      {
+        "id": 1,
+        "level": "V1",
+        "name": "新晋救援者",
+        "min_orders": 0,
+        "min_rating": 0,
+        "coefficient": 0.8,
+        "badge_color": "#9CA3AF",
+        "gradient_from": "#F3F4F6",
+        "gradient_to": "#E5E7EB",
+        "glow_color": "rgba(156,163,175,0.4)",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 2,
+        "level": "V2",
+        "name": "熟练司机",
+        "min_orders": 10,
+        "min_rating": 4.5,
+        "coefficient": 0.9,
+        "badge_color": "#22C55E",
+        "gradient_from": "#DCFCE7",
+        "gradient_to": "#86EFAC",
+        "glow_color": "rgba(34,197,94,0.45)",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 3,
+        "level": "V3",
+        "name": "精英救援",
+        "min_orders": 50,
+        "min_rating": 4.6,
+        "coefficient": 1,
+        "badge_color": "#3B82F6",
+        "gradient_from": "#DBEAFE",
+        "gradient_to": "#93C5FD",
+        "glow_color": "rgba(59,130,246,0.5)",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 4,
+        "level": "V4",
+        "name": "金牌救援",
+        "min_orders": 150,
+        "min_rating": 4.7,
+        "coefficient": 1.1,
+        "badge_color": "#F59E0B",
+        "gradient_from": "#FEF3C7",
+        "gradient_to": "#FCD34D",
+        "glow_color": "rgba(245,158,11,0.55)",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 5,
+        "level": "V5",
+        "name": "钻石救援",
+        "min_orders": 300,
+        "min_rating": 4.8,
+        "coefficient": 1.25,
+        "badge_color": "#06B6D4",
+        "gradient_from": "#CFFAFE",
+        "gradient_to": "#67E8F9",
+        "glow_color": "rgba(6,182,212,0.6)",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 6,
+        "level": "V6",
+        "name": "王者救援",
+        "min_orders": 600,
+        "min_rating": 4.9,
+        "coefficient": 1.4,
+        "badge_color": "#8B5CF6",
+        "gradient_from": "#EDE9FE",
+        "gradient_to": "#C4B5FD",
+        "glow_color": "rgba(139,92,246,0.65)",
+        "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 7,
+        "level": "V7",
+        "name": "传奇救援",
+        "min_orders": 1200,
+        "min_rating": 4.95,
+        "coefficient": 1.6,
+        "badge_color": "#EC4899",
+        "gradient_from": "#FCE7F3",
+        "gradient_to": "#F9A8D4",
+        "glow_color": "rgba(236,72,153,0.7)",
+        "created_at": "2026-08-28 09:45:16"
+      }
+    ],
+    "dispatch_logs": [
+      {
+        "id": 1,
+        "order_id": 2,
+        "order_no": "EV202608281853263037",
+        "mode": "auto",
+        "candidates_json": "[{\"id\":1,\"score\":0.6545,\"name\":\"救援司机\"}]",
+        "selected_driver_id": 1,
+        "is_manual_override": 0,
+        "remark": "距离权重0.4/评分0.25/等级0.2/接单0.15，最大半径30km",
+        "created_at": "2026-08-28 10:53:26"
+      }
+    ]
+  },
+  "counters": {
+    "pricing_config": 3,
+    "admins": 1,
+    "system_config": 20,
+    "driver_levels": 7,
+    "sms_captchas": 14,
+    "unified_accounts": 2,
+    "users": 1,
+    "orders": 4,
+    "payment_records": 4,
+    "drivers": 1,
+    "dispatch_logs": 1,
+    "service_cards": 4
+  }
+}

@@ -1,0 +1,121 @@
+<!-- pages/orders/orders.wxml - 订单列表页 -->
+<view class="container">
+  <!-- 自定义导航栏 -->
+  <view class="nav-bar" style="height: {{statusBarHeight + 44}}px;">
+    <view class="nav-status" style="height: {{statusBarHeight}}px;"></view>
+    <view class="nav-content">
+      <text class="nav-title">我的订单</text>
+    </view>
+  </view>
+  <view style="height: {{statusBarHeight + 44}}px;"></view>
+
+  <!-- 未登录状态 -->
+  <view class="not-logged-in" wx:if="{{!isLoggedIn}}">
+    <view class="not-logged-icon">
+      <view class="empty-order-icon"></view>
+    </view>
+    <text class="not-logged-text">请先登录查看订单</text>
+    <button class="btn btn-primary btn-sm" bindtap="goToLogin">去登录</button>
+  </view>
+
+  <!-- 已登录 -->
+  <block wx:if="{{isLoggedIn}}">
+    <!-- 筛选tab -->
+    <view class="tabs-bar">
+      <view
+        class="tab-item {{activeTab === item.key ? 'active' : ''}}"
+        wx:for="{{tabs}}"
+        wx:key="key"
+        data-tab="{{item.key}}"
+        bindtap="onTabChange"
+      >
+        <text>{{item.label}}</text>
+        <view class="tab-indicator" wx:if="{{activeTab === item.key}}"></view>
+      </view>
+    </view>
+
+    <!-- 加载中 -->
+    <view class="loading-state" wx:if="{{loading}}">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">加载中...</text>
+    </view>
+
+    <!-- 订单列表 -->
+    <view class="order-list" wx:if="{{!loading}}">
+      <view
+        class="order-card {{item.isActive ? 'active' : ''}}"
+        wx:for="{{displayOrders}}"
+        wx:key="id"
+        data-order="{{item}}"
+        bindtap="onOrderTap"
+      >
+        <!-- 订单头部 -->
+        <view class="order-card-header">
+          <text class="order-no">{{item.order_no}}</text>
+          <view class="tag {{item.statusClass}}">
+            <view class="tag-dot {{item.status}}" wx:if="{{item.isActive}}"></view>
+            <text>{{item.statusLabel}}</text>
+          </view>
+        </view>
+
+        <!-- 订单内容 -->
+        <view class="order-card-body">
+          <view class="order-info-row">
+            <view class="order-vehicle">
+              <view class="vehicle-badge-sm {{item.vehicle_type}}">
+                <text wx:if="{{item.vehicle_type === 'small'}}">S</text>
+                <text wx:if="{{item.vehicle_type === 'medium'}}">M</text>
+                <text wx:if="{{item.vehicle_type === 'large'}}">L</text>
+              </view>
+              <view class="vehicle-text">
+                <text class="vehicle-name-sm">{{item.vehicleLabel}}</text>
+                <text class="vehicle-plate" wx:if="{{item.vehicle_plate}}">{{item.vehicle_plate}}</text>
+              </view>
+            </view>
+            <view class="order-price">
+              <text class="price-symbol">￥</text>
+              <text class="price-num">{{item.total_price}}</text>
+            </view>
+          </view>
+
+          <view class="order-address-row">
+            <view class="address-pin"></view>
+            <text class="order-address-text">{{item.pickup_address}}</text>
+          </view>
+        </view>
+
+        <!-- 订单底部 -->
+        <view class="order-card-footer">
+          <view class="order-time">
+            <text class="time-label">{{item.created_at}}</text>
+          </view>
+          <view class="order-pay-status" wx:if="{{item.status === 'completed'}}">
+            <view class="pay-dot-sm {{item.payment_status === 'paid' ? 'paid' : 'unpaid'}}"></view>
+            <text class="pay-text-sm {{item.payment_status === 'paid' ? 'paid' : 'unpaid'}}">{{item.payment_status === 'paid' ? '已付款' : '待付款'}}</text>
+          </view>
+          <view class="order-arrow" wx:if="{{item.isActive}}">
+            <text class="arrow-text">追踪 ></text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 空状态 -->
+      <view class="empty-state" wx:if="{{displayOrders.length === 0}}">
+        <view class="empty-order-icon"></view>
+        <text class="empty-text">暂无订单记录</text>
+        <button class="btn btn-primary btn-sm mt-lg" bindtap="goToOrder">呼叫救援</button>
+      </view>
+
+      <!-- 加载更多 -->
+      <view class="load-more" wx:if="{{loadingMore}}">
+        <view class="loading-spinner-sm"></view>
+        <text class="load-more-text">加载中...</text>
+      </view>
+
+      <!-- 没有更多 -->
+      <view class="no-more" wx:if="{{!hasMore && displayOrders.length > 0}}">
+        <text>没有更多了</text>
+      </view>
+    </view>
+  </block>
+</view>

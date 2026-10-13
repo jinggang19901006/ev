@@ -1,0 +1,23 @@
+<view class="page">
+  <block wx:if="{{card}}">
+    <view class="hero">
+      <view class="top">
+        <view class="n">{{card.name}}</view>
+        <view class="d">-¥{{card.discount_amount}}</view>
+      </view>
+      <view class="row"><text>{{card.code}}</text><text>有效期至 {{card.expires_at}}</text></view>
+      <view class="row2"><text>适用：{{card.vehicle_size_cn}}</text>
+        <text class="st st-{{card.status}}">{{card.status_cn}}</text></view>
+      <view class="desc" wx:if="{{card.description}}">{{card.description}}</view>
+    </view>
+    <view class="sec">
+      <view class="sec-title">核销记录 · 共 {{usageList.length}} 条</view>
+      <view class="u" wx:for="{{usageList}}" wx:key="id">
+        <view class="u-top"><text>订单#{{item.order_id}}</text><text class="ok">抵扣¥{{item.discount_amount}}</text></view>
+        <view class="u-bottom"><text>{{item.redeemed_at}}</text>
+          <text wx:if="{{item.admin_note}}">备注：{{item.admin_note}}</text></view>
+      </view>
+      <view wx:if="{{!usageList.length}}" class="empty">尚未核销过</view>
+    </view>
+  </block>
+</view>

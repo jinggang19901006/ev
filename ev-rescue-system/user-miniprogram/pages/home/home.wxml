@@ -1,0 +1,175 @@
+<!-- pages/home/home.wxml - 首页 -->
+<view class="container">
+  <!-- 顶部横幅区域 -->
+  <view class="hero-section" style="padding-top: {{statusBarHeight + 44}}px;">
+    <!-- 背景光效 -->
+    <view class="hero-bg-glow"></view>
+    <view class="hero-bg-grid"></view>
+
+    <!-- 服务标识 -->
+    <view class="hero-content">
+      <view class="hero-badge">
+        <view class="badge-dot pulse"></view>
+        <text class="badge-text">60kW 直流快充</text>
+      </view>
+
+      <view class="hero-title">绵阳24小时</view>
+      <view class="hero-title accent">新能源应急充电救援</view>
+
+      <view class="hero-tags">
+        <view class="hero-tag">
+          <view class="tag-dot green"></view>
+          <text>24小时服务</text>
+        </view>
+        <view class="hero-tag">
+          <view class="tag-dot cyan"></view>
+          <text>60kW大功率</text>
+        </view>
+        <view class="hero-tag">
+          <view class="tag-dot green"></view>
+          <text>移动上门救援</text>
+        </view>
+      </view>
+
+      <!-- 夜间提示 -->
+      <view class="night-tip" wx:if="{{isNight}}">
+        <text class="night-tip-text">当前为夜间时段（22:00-06:00），执行夜间价格</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 进行中订单提示 -->
+  <view class="active-order-bar" wx:if="{{activeOrder}}" bindtap="onViewActiveOrder">
+    <view class="active-order-left">
+      <view class="active-pulse"></view>
+      <text class="active-text">您有进行中的救援订单</text>
+    </view>
+    <text class="active-arrow">查看 ></text>
+  </view>
+
+  <!-- 一键救援按钮区（放在显眼位置） -->
+  <view class="rescue-section">
+    <view class="rescue-button" bindtap="onRescue">
+      <view class="rescue-button-bg"></view>
+      <view class="rescue-button-inner">
+        <view class="rescue-icon-wrap">
+          <view class="rescue-pulse-ring"></view>
+          <view class="rescue-pulse-ring delay"></view>
+          <view class="rescue-icon-center">
+            <view class="rescue-bolt"></view>
+          </view>
+        </view>
+        <text class="rescue-text">一键呼叫救援</text>
+        <text class="rescue-subtext">24小时随时响应</text>
+      </view>
+    </view>
+
+    <!-- 电话救援 -->
+    <view class="phone-rescue" bindtap="onCallPhone">
+      <view class="phone-icon-circle">
+        <view class="phone-icon"></view>
+      </view>
+      <view class="phone-info">
+        <text class="phone-label">电话救援</text>
+        <text class="phone-number">{{serviceInfo.phone || '15228301555'}}</text>
+      </view>
+      <view class="phone-arrow">></view>
+    </view>
+  </view>
+
+  <!-- 服务特点 -->
+  <view class="section">
+    <view class="section-title">服务特点</view>
+    <view class="features-grid">
+      <view class="feature-item">
+        <view class="feature-icon icon-power">
+          <view class="icon-bolt"></view>
+        </view>
+        <text class="feature-name">60kW直流快充</text>
+        <text class="feature-desc">大功率移动充电车</text>
+      </view>
+      <view class="feature-item">
+        <view class="feature-icon icon-speed">
+          <view class="icon-clock"></view>
+        </view>
+        <text class="feature-name">30分钟到达</text>
+        <text class="feature-desc">绵阳及周边快速响应</text>
+      </view>
+      <view class="feature-item">
+        <view class="feature-icon icon-rescue">
+          <view class="icon-truck"></view>
+        </view>
+        <text class="feature-name">上门救援</text>
+        <text class="feature-desc">无需拖车现场充电</text>
+      </view>
+      <view class="feature-item">
+        <view class="feature-icon icon-safe">
+          <view class="icon-shield"></view>
+        </view>
+        <text class="feature-name">安全可靠</text>
+        <text class="feature-desc">专业团队持证作业</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 定价展示 -->
+  <view class="section">
+    <view class="section-title">服务定价</view>
+    <view class="section-subtitle">
+      <text>30公里内一口价，超出部分{{pricingList[0].extraPerKm || 5}}元/公里</text>
+    </view>
+
+    <view class="pricing-list">
+      <view class="pricing-card" wx:for="{{pricingList}}" wx:key="type">
+        <view class="pricing-header">
+          <view class="pricing-vehicle">
+            <text class="vehicle-icon-small" wx:if="{{item.type === 'small'}}">S</text>
+            <text class="vehicle-icon-medium" wx:if="{{item.type === 'medium'}}">M</text>
+            <text class="vehicle-icon-large" wx:if="{{item.type === 'large'}}">L</text>
+            <view class="vehicle-info">
+              <text class="vehicle-name">{{item.name}}</text>
+              <text class="vehicle-range">{{item.baseDistance}}公里内一口价</text>
+            </view>
+          </view>
+        </view>
+        <view class="pricing-body">
+          <view class="price-item">
+            <text class="price-label">白天</text>
+            <text class="price-value">{{item.dayPrice}}</text>
+            <text class="price-unit">元</text>
+          </view>
+          <view class="price-divider"></view>
+          <view class="price-item {{isNight ? 'active' : ''}}">
+            <text class="price-label">夜间</text>
+            <text class="price-value">{{item.nightPrice}}</text>
+            <text class="price-unit">元</text>
+          </view>
+        </view>
+        <view class="pricing-badge" wx:if="{{isNight}}">
+          <text>当前夜间价格</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="pricing-notes">
+      <view class="note-item">
+        <view class="note-dot"></view>
+        <text>夜间时段：22:00 - 次日06:00</text>
+      </view>
+      <view class="note-item">
+        <view class="note-dot"></view>
+        <text>超出30公里部分，按5元/公里计费</text>
+      </view>
+      <view class="note-item">
+        <view class="note-dot"></view>
+        <text>高速费/停车费等额外费用据实收取</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部信息 -->
+  <view class="footer-info">
+    <text class="footer-text">服务区域：绵阳及周边30公里</text>
+    <text class="footer-text">服务时间：7x24小时全年无休</text>
+  </view>
+</view>

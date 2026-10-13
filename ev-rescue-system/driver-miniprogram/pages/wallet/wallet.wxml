@@ -1,0 +1,106 @@
+<!-- pages/wallet/wallet.wxml -->
+<view class="wallet-page">
+  <!-- 自定义导航栏 -->
+  <view class="custom-nav" style="padding-top: {{statusBarHeight}}px;">
+    <view class="nav-bar" style="height: {{navBarHeight}}px;">
+      <view class="nav-back" bindtap="onBack">
+        <text class="back-icon">‹</text>
+      </view>
+      <text class="nav-title-text">我的钱包</text>
+      <view class="nav-placeholder"></view>
+    </view>
+  </view>
+  <view style="height: {{statusBarHeight + navBarHeight}}px;"></view>
+
+  <scroll-view scroll-y class="wallet-scroll" enhanced show-scrollbar="{{false}}">
+
+    <!-- 余额卡片 -->
+    <view class="balance-card">
+      <view class="balance-bg-decoration">
+        <view class="balance-circle-1"></view>
+        <view class="balance-circle-2"></view>
+      </view>
+      <view class="balance-info">
+        <text class="balance-label">可提现余额(元)</text>
+        <view class="balance-amount">
+          <text class="balance-symbol">¥</text>
+          <text class="balance-value">{{balance}}</text>
+        </view>
+        <text class="balance-total">累计收入 ¥{{totalEarnings}}</text>
+      </view>
+      <button class="withdraw-btn" bindtap="onShowWithdraw">提现</button>
+    </view>
+
+    <!-- 提现记录 -->
+    <view class="section">
+      <view class="section-title">提现记录</view>
+
+      <view wx:if="{{withdrawals.length === 0}}" class="empty-state">
+        <text class="empty-text">暂无提现记录</text>
+      </view>
+
+      <view wx:else class="withdrawal-list">
+        <view wx:for="{{withdrawals}}" wx:key="id" class="withdrawal-item">
+          <view class="withdrawal-left">
+            <text class="withdrawal-amount">-¥{{item.amount}}</text>
+            <text class="withdrawal-time">{{item.created_at}}</text>
+          </view>
+          <view class="withdrawal-right">
+            <text class="withdrawal-status {{item.status}}">{{item.status === 'pending' ? '审核中' : item.status === 'approved' ? '已通过' : '已退回'}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view style="height: 120rpx;"></view>
+  </scroll-view>
+
+  <!-- 提现弹窗 -->
+  <view wx:if="{{showWithdraw}}" class="modal-mask" bindtap="onCloseWithdraw">
+    <view class="modal-content" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">申请提现</text>
+        <text class="modal-close" bindtap="onCloseWithdraw">✕</text>
+      </view>
+
+      <view class="modal-body">
+        <view class="withdraw-balance">
+          <text class="withdraw-balance-label">可提现余额</text>
+          <text class="withdraw-balance-value">¥{{balance}}</text>
+        </view>
+
+        <view class="withdraw-input-box">
+          <text class="withdraw-unit">¥</text>
+          <input class="withdraw-input" type="digit" placeholder="请输入提现金额" placeholder-class="withdraw-placeholder" value="{{withdrawAmount}}" bindinput="onAmountInput" focus="{{showWithdraw}}" />
+          <text class="withdraw-all" bindtap="onAllWithdraw">全部</text>
+        </view>
+
+        <view class="withdraw-type">
+          <text class="withdraw-type-title">提现方式</text>
+          <view class="withdraw-type-options">
+            <view class="type-option {{withdrawType === 'wechat' ? 'active' : ''}}" data-type="wechat" bindtap="onTypeChange">
+              <text>微信</text>
+            </view>
+            <view class="type-option {{withdrawType === 'alipay' ? 'active' : ''}}" data-type="alipay" bindtap="onTypeChange">
+              <text>支付宝</text>
+            </view>
+            <view class="type-option {{withdrawType === 'bank' ? 'active' : ''}}" data-type="bank" bindtap="onTypeChange">
+              <text>银行卡</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="withdraw-tip">
+          <text>提现申请提交后，管理员审核通过后将到账。审核一般为1-3个工作日。</text>
+        </view>
+      </view>
+
+      <view class="modal-footer">
+        <button class="btn btn-outline btn-lg modal-btn" bindtap="onCloseWithdraw">取消</button>
+        <button class="btn btn-primary btn-lg modal-btn" bindtap="onConfirmWithdraw" disabled="{{processing}}">
+          {{processing ? '提交中...' : '确认提现'}}
+        </button>
+      </view>
+    </view>
+  </view>
+</view>

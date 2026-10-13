@@ -1,0 +1,20 @@
+.page { min-height:100vh; padding:48rpx 32rpx 120rpx; background:#0a1628; color:#fff; }
+.banner { margin-bottom:36rpx; }
+.role-chip { display:inline-block; padding: 8rpx 20rpx; border-radius: 999rpx; background: linear-gradient(90deg,#00d4ff,#3b82f6); color:#fff; font-size:26rpx; font-weight:500;}
+.hint { margin-top:18rpx; color:#8aa0bf; font-size:26rpx; line-height:1.6; }
+.card { background: rgba(255,255,255,0.05); border:1rpx solid rgba(255,255,255,0.08); border-radius:20rpx; padding:36rpx 28rpx; }
+.field { margin-bottom:28rpx; }
+.label { color:#aac1e0; font-size:24rpx; margin-bottom:12rpx;}
+.input { background: rgba(255,255,255,0.06); border-radius:14rpx; padding:0 24rpx; height:88rpx; color:#fff; font-size:30rpx;}
+.row { display:flex; gap:16rpx; align-items:center;}
+.row .input.code { flex:1; }
+.btn.sms { width: 200rpx; height: 70rpx; line-height:70rpx; background: rgba(0,212,255,0.15); color:#6fe1ff; font-size:24rpx; border:none; border-radius:14rpx; padding:0;}
+.btn.sms[disabled] { opacity:0.6; color:#8aa0bf; }
+
+.btn { height: 88rpx; line-height: 88rpx; border-radius: 14rpx; font-size: 30rpx; border:none; padding:0; margin-bottom: 16rpx;}
+.btn.primary { background: linear-gradient(90deg,#00d4ff,#3b82f6); color:#fff; font-weight:500;}
+.btn.primary[disabled] { opacity:0.6; }
+.btn.ghost { background: transparent; color:#9db7db; border:1rpx solid rgba(255,255,255,0.2); }
+.split { text-align:center; margin: 18rpx 0 10rpx; }
+.split text { color:#7490b5; font-size:22rpx; padding:0 16rpx;}
+.footer-tip { margin-top: 60rpx; color:#5b7597; font-size:22rpx; text-align:center;}

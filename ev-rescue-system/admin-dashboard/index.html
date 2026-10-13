@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>新能源车移动充电救援系统 - 运营管理后台</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============================================================
+     登录页
+     ============================================================ -->
+<div class="login-page" id="loginPage">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">⚡</div>
+      <h1>充电救援运营后台</h1>
+      <p>新能源车移动充电救援系统</p>
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <form class="login-form" id="loginForm" autocomplete="off">
+      <div class="form-group">
+        <label>管理员账号</label>
+        <div class="input-wrap">
+          <span class="input-icon">👤</span>
+          <input type="text" id="loginUsername" placeholder="请输入用户名" value="admin">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>登录密码</label>
+        <div class="input-wrap">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="loginPassword" placeholder="请输入密码" value="">
+        </div>
+      </div>
+      <button type="submit" class="login-btn" id="loginBtn">登 录</button>
+    </form>
+    <div class="login-hint">默认账号：admin / admin123</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     主布局
+     ============================================================ -->
+<div class="app-layout" id="appLayout">
+
+  <!-- 侧边栏遮罩(移动端) -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <!-- 侧边栏 -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">
+        充电救援
+        <span>运营管理后台</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">主菜单</div>
+      <div class="nav-item active" data-view="dashboard">
+        <span class="nav-icon">📊</span>
+        <span>数据看板</span>
+      </div>
+      <div class="nav-item" data-view="orders">
+        <span class="nav-icon">📋</span>
+        <span>订单管理</span>
+      </div>
+      <div class="nav-item" data-view="drivers">
+        <span class="nav-icon">🚗</span>
+        <span>司机管理</span>
+      </div>
+      <div class="nav-item" data-view="users">
+        <span class="nav-icon">👥</span>
+        <span>用户管理</span>
+      </div>
+      <div class="nav-section-title">配置中心</div>
+      <div class="nav-item" data-view="pricing">
+        <span class="nav-icon">💰</span>
+        <span>定价配置</span>
+      </div>
+      <div class="nav-item" data-view="cards">
+        <span class="nav-icon">🎫</span>
+        <span>服务卡管理</span>
+      </div>
+      <div class="nav-item" data-view="cardsAssign">
+        <span class="nav-icon">📦</span>
+        <span>服务卡分配</span>
+      </div>
+      <div class="nav-item" data-view="dispatch">
+        <span class="nav-icon">🗺️</span>
+        <span>订单调度</span>
+      </div>
+      <div class="nav-section-title">财务中心</div>
+      <div class="nav-item" data-view="payments">
+        <span class="nav-icon">🧾</span>
+        <span>支付流水</span>
+      </div>
+      <div class="nav-item" data-view="credit">
+        <span class="nav-icon">🏅</span>
+        <span>信用积分</span>
+      </div>
+      <div class="nav-item" data-view="config">
+        <span class="nav-icon">⚙️</span>
+        <span>系统配置</span>
+      </div>
+      <div class="nav-item" data-view="withdrawals">
+        <span class="nav-icon">💸</span>
+        <span>提现管理</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="admin-info-mini">
+        <div class="admin-avatar" id="sidebarAvatar">A</div>
+        <div class="admin-detail">
+          <div class="name" id="sidebarAdminName">管理员</div>
+          <div class="role">系统管理员</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 顶部栏 -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="menu-toggle" id="menuToggle">☰</button>
+      <div class="page-title" id="pageTitle">数据看板</div>
+    </div>
+    <div class="topbar-right">
+      <button class="icon-btn" id="refreshBtn" title="刷新数据">🔄</button>
+      <div class="admin-dropdown">
+        <div class="avatar" id="topbarAvatar">A</div>
+        <span class="name" id="topbarAdminName">管理员</span>
+      </div>
+      <button class="btn-logout" id="logoutBtn">
+        <span>⏻</span>
+        <span>退出</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 内容区 -->
+  <main class="content-area">
+
+    <!-- ==================== 数据看板 ==================== -->
+    <section class="view active" id="view-dashboard">
+      <div class="page-header">
+        <div>
+          <h2>数据看板</h2>
+          <div class="subtitle" id="dashboardDate"></div>
+        </div>
+        <button class="btn btn-primary" id="dashboardRefreshBtn">
+          <span>🔄</span> 刷新数据
+        </button>
+      </div>
+
+      <div id="dashboardContent">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>正在加载看板数据...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 订单管理 ==================== -->
+    <section class="view" id="view-orders">
+      <div class="page-header">
+        <div>
+          <h2>订单管理</h2>
+          <div class="subtitle">查看和管理所有救援订单</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-toolbar">
+          <div class="toolbar-left">
+            <select class="form-control" id="orderStatusFilter">
+              <option value="all">全部状态</option>
+              <option value="pending">待接单</option>
+              <option value="accepted">已接单</option>
+              <option value="en_route">前往中</option>
+              <option value="arrived">已到达</option>
+              <option value="charging">充电中</option>
+              <option value="completed">已完成</option>
+              <option value="cancelled">已取消</option>
+            </select>
+            <select class="form-control" id="orderVehicleFilter">
+              <option value="all">全部车型</option>
+              <option value="small">小型车</option>
+              <option value="medium">中型车(4.2米货车)</option>
+              <option value="large">大型车(重卡)</option>
+            </select>
+            <div class="search-input">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="orderKeyword" placeholder="搜索订单号/车牌/地址">
+            </div>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table id="ordersTable">
+            <thead>
+              <tr>
+                <th>订单号</th>
+                <th>车型</th>
+                <th>车牌</th>
+                <th>状态</th>
+                <th>金额</th>
+                <th>司机</th>
+                <th>用户</th>
+                <th>下单时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTableBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="ordersPagination"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 司机管理 ==================== -->
+    <section class="view" id="view-drivers">
+      <div class="page-header">
+        <div>
+          <h2>司机管理</h2>
+          <div class="subtitle">管理救援司机账号及审核</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-toolbar">
+          <div class="toolbar-left">
+            <select class="form-control" id="driverStatusFilter">
+              <option value="all">全部状态</option>
+              <option value="pending">待审核</option>
+              <option value="approved">已通过</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table id="driversTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>姓名</th>
+                <th>电话</th>
+                <th>状态</th>
+                <th>审核</th>
+                <th>评分</th>
+                <th>服务等级</th>
+                <th>完成订单</th>
+                <th>饥饿度</th>
+                <th>总收入</th>
+                <th>钱包余额</th>
+                <th>注册时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="driversTableBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="driversPagination"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 定价配置 ==================== -->
+    <section class="view" id="view-pricing">
+      <div class="page-header">
+        <div>
+          <h2>定价配置</h2>
+          <div class="subtitle">三档车型救援定价管理</div>
+        </div>
+      </div>
+
+      <div class="pricing-grid" id="pricingGrid">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>正在加载定价配置...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 用户管理 ==================== -->
+    <section class="view" id="view-users">
+      <div class="page-header">
+        <div>
+          <h2>用户管理</h2>
+          <div class="subtitle">查看和管理所有注册用户</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-toolbar">
+          <div class="toolbar-left">
+            <div class="search-input">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="userKeyword" placeholder="搜索手机号/昵称">
+            </div>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table id="usersTable">
+            <thead>
+              <tr>
+                <th>昵称</th>
+                <th>手机号</th>
+                <th>订单数</th>
+                <th>消费总额</th>
+                <th>注册时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="usersPagination"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 服务卡管理 ==================== -->
+    <section class="view" id="view-cards">
+      <div class="page-header">
+        <div>
+          <h2>服务卡管理</h2>
+          <div class="subtitle">查看与生成救援服务卡</div>
+        </div>
+        <button class="btn btn-primary" id="genCardBtn">
+          <span>＋</span> 生成服务卡
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="table-wrapper">
+          <table id="cardsTable">
+            <thead>
+              <tr>
+                <th>卡号</th>
+                <th>车型</th>
+                <th>价格</th>
+                <th>使用情况</th>
+                <th>状态</th>
+                <th>持卡用户</th>
+                <th>生成时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="cardsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 系统配置 ==================== -->
+    <section class="view" id="view-config">
+      <div class="page-header">
+        <div>
+          <h2>系统配置</h2>
+          <div class="subtitle">管理抽佣比例、提现门槛等系统参数</div>
+        </div>
+      </div>
+      <div id="configContent">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>正在加载配置...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 提现管理 ==================== -->
+    <section class="view" id="view-withdrawals">
+      <div class="page-header">
+        <div>
+          <h2>提现管理</h2>
+          <div class="subtitle">审核司机提现申请</div>
+        </div>
+      </div>
+      <div id="withdrawalsContent">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>正在加载提现记录...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 服务卡分配（需求4） ==================== -->
+    <section class="view" id="view-cardsAssign">
+      <div class="page-header">
+        <div>
+          <h2>服务卡分配</h2>
+          <div class="subtitle">创建 → 按手机号/用户ID分配 → 核销 → 完整追踪</div>
+        </div>
+      </div>
+      <div id="cardsAssignContent">
+        <div class="loading-state"><div class="spinner"></div><p>正在加载服务卡...</p></div>
+      </div>
+    </section>
+
+    <!-- ==================== 订单调度（需求3） ==================== -->
+    <section class="view" id="view-dispatch">
+      <div class="page-header">
+        <div>
+          <h2>订单调度·智能派单</h2>
+          <div class="subtitle">综合距离 / 评分 / 服务等级 / 饥饿接单量 排序</div>
+        </div>
+      </div>
+      <div id="dispatchContent">
+        <div class="loading-state"><div class="spinner"></div><p>正在加载...</p></div>
+      </div>
+    </section>
+
+    <!-- ==================== 支付流水（需求5） ==================== -->
+    <section class="view" id="view-payments">
+      <div class="page-header">
+        <div>
+          <h2>支付流水</h2>
+          <div class="subtitle">押金 / 尾款 / 退款 全链路 + 逃单扫描</div>
+        </div>
+      </div>
+      <div id="paymentsContent">
+        <div class="loading-state"><div class="spinner"></div><p>正在加载流水...</p></div>
+      </div>
+    </section>
+
+    <!-- ==================== 信用积分（需求5） ==================== -->
+    <section class="view" id="view-credit">
+      <div class="page-header">
+        <div>
+          <h2>信用积分管理</h2>
+          <div class="subtitle">逃单扣分、恢复加分、阈值(60)拦截</div>
+        </div>
+      </div>
+      <div id="creditContent">
+        <div class="loading-state"><div class="spinner"></div><p>正在加载用户列表...</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============================================================
+     模态框：订单详情
+     ============================================================ -->
+<div class="modal-overlay" id="orderDetailModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3>订单详情</h3>
+      <button class="modal-close" data-close="orderDetailModal">×</button>
+    </div>
+    <div class="modal-body" id="orderDetailBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close="orderDetailModal">关闭</button>
+      <button class="btn btn-primary" id="orderDetailPriceBtn">手动改价</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     模态框：手动改价
+     ============================================================ -->
+<div class="modal-overlay" id="priceModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>手动改价</h3>
+      <button class="modal-close" data-close="priceModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="price-form" id="priceForm">
+        <div class="price-row">
+          <label>基础费用</label>
+          <div class="input-group">
+            <input type="number" id="priceBase" step="0.01" min="0">
+            <span class="unit">元</span>
+          </div>
+        </div>
+        <div class="price-row">
+          <label>距离费用</label>
+          <div class="input-group">
+            <input type="number" id="priceDistance" step="0.01" min="0">
+            <span class="unit">元</span>
+          </div>
+        </div>
+        <div class="price-row">
+          <label>附加费用</label>
+          <div class="input-group">
+            <input type="number" id="priceExtra" step="0.01" min="0">
+            <span class="unit">元</span>
+          </div>
+        </div>
+        <div class="total-display">
+          <span class="label">合计金额</span>
+          <span class="value" id="priceTotal">¥0.00</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close="priceModal">取消</button>
+      <button class="btn btn-primary" id="priceSubmitBtn">确认改价</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     模态框：司机详情
+     ============================================================ -->
+<div class="modal-overlay" id="driverDetailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>司机详情</h3>
+      <button class="modal-close" data-close="driverDetailModal">×</button>
+    </div>
+    <div class="modal-body" id="driverDetailBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close="driverDetailModal">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     模态框：生成服务卡
+     ============================================================ -->
+<div class="modal-overlay" id="genCardModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>生成服务卡</h3>
+      <button class="modal-close" data-close="genCardModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">车型</label>
+        <select class="form-control" id="genCardVehicle">
+          <option value="small">小型车</option>
+          <option value="medium">中型车(4.2米货车)</option>
+          <option value="large">大型车(重卡)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">价格（元）</label>
+        <input type="number" class="form-control" id="genCardPrice" step="0.01" min="0" placeholder="请输入服务卡价格">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close="genCardModal">取消</button>
+      <button class="btn btn-primary" id="genCardSubmitBtn">生成</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     模态框：确认对话框
+     ============================================================ -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h3 id="confirmTitle">确认操作</h3>
+      <button class="modal-close" data-close="confirmModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-body" id="confirmBody">
+        <div class="confirm-icon">⚠️</div>
+        <p id="confirmMessage">确定执行此操作吗？</p>
+        <p class="confirm-desc" id="confirmDesc"></p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close="confirmModal">取消</button>
+      <button class="btn btn-primary" id="confirmOkBtn">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     模态框：指派司机
+     ============================================================ -->
+<div class="modal-overlay" id="assignDriverModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>指派司机</h3>
+      <button class="modal-close" data-close="assignDriverModal">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom:16px;color:#94a3b8;">请选择要指派的司机（仅显示已审核司机）：</p>
+      <div id="assignDriverList" style="max-height:300px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close="assignDriverModal">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     模态框：编辑司机
+     ============================================================ -->
+<div class="modal-overlay" id="editDriverModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>编辑司机信息</h3>
+      <button class="modal-close" data-close="editDriverModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">姓名</label>
+        <input type="text" class="form-control" id="editDriverName" placeholder="请输入司机姓名">
+      </div>
+      <div class="form-group">
+        <label class="form-label">电话</label>
+        <input type="text" class="form-control" id="editDriverPhone" placeholder="请输入司机电话" maxlength="11">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close="editDriverModal">取消</button>
+      <button class="btn btn-primary" id="editDriverSubmitBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     模态框：用户详情
+     ============================================================ -->
+<div class="modal-overlay" id="userDetailModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3>用户详情</h3>
+      <button class="modal-close" data-close="userDetailModal">×</button>
+    </div>
+    <div class="modal-body" id="userDetailBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close="userDetailModal">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 新增：服务卡单张分配 Modal ===== -->
+<div class="modal-overlay" id="allocCardModal">
+  <div class="modal">
+    <div class="modal-header"><h3>分配服务卡给用户</h3><button class="modal-close" data-close="allocCardModal">×</button></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">用户ID（已知ID时使用）</label>
+        <input class="form-control" id="allocCardUserId" type="number" placeholder="例如 1001"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">手机号（常用）</label>
+        <input class="form-control" id="allocCardPhone" type="text" maxlength="11" placeholder="按手机号自动匹配用户，找不到会提示用户先注册"/>
+      </div>
+      <p style="color:#94a3b8;font-size:12px;">二者填一个即可；都填时优先使用用户ID。</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close="allocCardModal">取消</button>
+      <button class="btn btn-primary" onclick="App.submitCardAllocate()">确认分配</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 新增：服务卡批量分配 Modal ===== -->
+<div class="modal-overlay" id="batchCardModal">
+  <div class="modal">
+    <div class="modal-header"><h3>批量分配服务卡（按手机号）</h3><button class="modal-close" data-close="batchCardModal">×</button></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">目标用户手机号</label>
+        <input class="form-control" id="batchPhone" type="text" maxlength="11" placeholder="例如 15228301555"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">卡ID列表（逗号分隔）</label>
+        <input class="form-control" id="batchCardIds" type="text" placeholder="例如 101, 102, 103"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close="batchCardModal">取消</button>
+      <button class="btn btn-primary" onclick="App.submitCardBatch()">批量分配</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 新增：生成服务卡 Modal ===== -->
+<div class="modal-overlay" id="newCardModal">
+  <div class="modal">
+    <div class="modal-header"><h3>生成服务卡</h3><button class="modal-close" data-close="newCardModal">×</button></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">卡名称</label>
+        <input class="form-control" id="newCardName" type="text" placeholder="如 老客回馈卡 · 抵扣50"/>
+      </div>
+      <div class="row-flex">
+        <div class="form-group">
+          <label class="form-label">抵扣金额(元)</label>
+          <input class="form-control" id="newCardAmount" type="number" min="0" step="0.01" value="50"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">适用车型</label>
+          <select class="form-control" id="newCardVehicle">
+            <option value="all">全车型通用</option>
+            <option value="small">小型车</option>
+            <option value="medium">中型车</option>
+            <option value="large">大型车</option>
+          </select>
+        </div>
+      </div>
+      <div class="row-flex">
+        <div class="form-group">
+          <label class="form-label">生成数量</label>
+          <input class="form-control" id="newCardCount" type="number" min="1" value="1"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">有效期(天)</label>
+          <input class="form-control" id="newCardExpireDays" type="number" min="1" value="90"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close="newCardModal">取消</button>
+      <button class="btn btn-primary" onclick="App.submitCardCreate()">生成</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 新增：调整用户信用积分 Modal ===== -->
+<div class="modal-overlay" id="adjustCreditModal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header"><h3>调整用户信用积分</h3><button class="modal-close" data-close="adjustCreditModal">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">目标用户</label>
+        <div id="adjustCreditUser" style="font-weight:500;">-</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">分数变动（正加负扣）</label>
+        <input class="form-control" id="adjustCreditDelta" type="number" placeholder="例如：-30 扣30分，+2 加2分"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">调整原因</label>
+        <input class="form-control" id="adjustCreditReason" type="text" placeholder="如 人工解除逃单标记 / 活动奖励"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close="adjustCreditModal">取消</button>
+      <button class="btn btn-primary" onclick="App.submitCreditAdjust()">确认调整</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast 容器 -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

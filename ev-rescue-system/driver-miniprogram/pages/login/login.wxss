@@ -1,0 +1,241 @@
+/* pages/login/login.wxss */
+.login-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0a1628 0%, #0d1b2e 50%, #0a1628 100%);
+  position: relative;
+  overflow: hidden;
+  padding: 0 48rpx;
+  padding-bottom: 80rpx;
+}
+
+/* ===== 背景装饰 ===== */
+.bg-decoration {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 600rpx;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.bg-circle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.08;
+}
+
+.bg-circle-1 {
+  width: 400rpx;
+  height: 400rpx;
+  background: radial-gradient(circle, #f59e0b 0%, transparent 70%);
+  top: -100rpx;
+  right: -100rpx;
+}
+
+.bg-circle-2 {
+  width: 300rpx;
+  height: 300rpx;
+  background: radial-gradient(circle, #00d4ff 0%, transparent 70%);
+  top: 200rpx;
+  left: -80rpx;
+}
+
+.bg-circle-3 {
+  width: 200rpx;
+  height: 200rpx;
+  background: radial-gradient(circle, #f59e0b 0%, transparent 70%);
+  top: 350rpx;
+  right: 50rpx;
+  opacity: 0.05;
+}
+
+/* ===== Logo区域 ===== */
+.logo-section {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 80rpx;
+  padding-bottom: 60rpx;
+}
+
+.logo-icon {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 36rpx;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 16rpx 40rpx rgba(245, 158, 11, 0.4);
+  margin-bottom: 32rpx;
+}
+
+.logo-bolt {
+  font-size: 72rpx;
+  line-height: 1;
+}
+
+.logo-title {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: #e8eef5;
+  letter-spacing: 4rpx;
+  margin-bottom: 12rpx;
+}
+
+.logo-subtitle {
+  font-size: 26rpx;
+  color: #8b9bb0;
+  margin-bottom: 8rpx;
+}
+
+.logo-region {
+  font-size: 22rpx;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 6rpx 24rpx;
+  border-radius: 20rpx;
+  border: 1rpx solid rgba(245, 158, 11, 0.2);
+}
+
+/* ===== 表单区域 ===== */
+.form-section {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(135deg, rgba(17, 36, 65, 0.8) 0%, rgba(13, 27, 46, 0.8) 100%);
+  border-radius: 32rpx;
+  padding: 48rpx 40rpx;
+  border: 1rpx solid #1e3556;
+  backdrop-filter: blur(20rpx);
+}
+
+.form-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #e8eef5;
+  margin-bottom: 40rpx;
+  text-align: center;
+}
+
+/* ===== 头像选择 ===== */
+.avatar-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 40rpx;
+}
+
+.avatar-btn {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  border: 2rpx dashed #2a4566;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.avatar-btn::after {
+  border: none;
+}
+
+.avatar-btn:active {
+  opacity: 0.8;
+}
+
+.avatar-img {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 50%;
+}
+
+.avatar-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-plus {
+  font-size: 48rpx;
+  color: #5a6a7a;
+  line-height: 1;
+}
+
+.avatar-tip {
+  font-size: 20rpx;
+  color: #5a6a7a;
+  margin-top: 4rpx;
+}
+
+/* ===== 输入框 ===== */
+.placeholder {
+  color: #5a6a7a;
+}
+
+.input-field {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2rpx solid #1e3556;
+  transition: all 0.2s ease;
+}
+
+.input-error {
+  border-color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.error-text {
+  display: block;
+  color: #ef4444;
+  font-size: 24rpx;
+  margin-top: 12rpx;
+  padding-left: 8rpx;
+}
+
+/* ===== 协议 ===== */
+.agreement-section {
+  margin: 32rpx 0 40rpx;
+}
+
+.agreement-label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.agreement-label checkbox {
+  transform: scale(0.8);
+}
+
+.agreement-text {
+  font-size: 24rpx;
+  color: #8b9bb0;
+}
+
+.agreement-link {
+  font-size: 24rpx;
+  color: #f59e0b;
+}
+
+/* ===== 登录按钮 ===== */
+.login-btn {
+  width: 100%;
+  margin-top: 16rpx;
+}
+
+/* ===== 提示 ===== */
+.login-tips {
+  display: flex;
+  justify-content: center;
+  margin-top: 32rpx;
+}
+
+.tip-text {
+  font-size: 24rpx;
+  color: #5a6a7a;
+}

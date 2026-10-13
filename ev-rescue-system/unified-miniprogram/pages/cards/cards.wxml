@@ -1,0 +1,27 @@
+<view class="page">
+  <view class="tabs">
+    <view class="tab {{tab==='unused' ? 'on' : ''}}" bindtap="switchTab" data-tab="unused">未使用 ({{unused.length}})</view>
+    <view class="tab {{tab==='used' ? 'on' : ''}}" bindtap="switchTab" data-tab="used">已核销 ({{used.length}})</view>
+    <view class="tab {{tab==='expired' ? 'on' : ''}}" bindtap="switchTab" data-tab="expired">已过期 ({{expired.length}})</view>
+  </view>
+  <view class="wrap">
+    <block wx:for="{{list}}" wx:key="id">
+      <view class="card" bindtap="openDetail" data-id="{{item.id}}">
+        <view class="left">
+          <view class="discount">-¥{{item.discount_amount}}</view>
+          <view class="code">{{item.code}}</view>
+        </view>
+        <view class="right">
+          <view class="name">{{item.name}}</view>
+          <view class="line">可用车型：{{item.vehicle_size === 'all' ? '全车型' : item.vehicle_size_cn}}</view>
+          <view class="line">有效期至：{{item.expires_at}}</view>
+          <view class="line state-{{item.status}}">状态：{{item.status_cn}}</view>
+        </view>
+      </view>
+    </block>
+    <view wx:if="{{!list.length && !loading}}" class="empty">
+      <view class="emoji">🎫</view>
+      <view class="txt">当前暂无服务卡，后台购买/领取后会出现在这里</view>
+    </view>
+  </view>
+</view>

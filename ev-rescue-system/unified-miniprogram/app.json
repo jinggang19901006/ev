@@ -1,0 +1,62 @@
+{
+  "pages": [
+    "pages/auth-entry/auth-entry",
+    "pages/home-user/home-user",
+    "pages/order/order",
+    "pages/order-user/order-user",
+    "pages/home-driver/home-driver",
+    "pages/detail-driver/detail-driver",
+    "pages/login-phone/login-phone",
+    "pages/register-phone/register-phone",
+    "pages/role-switch/role-switch",
+    "pages/cards/cards",
+    "pages/cards-detail/cards-detail",
+    "pages/payment-pay/payment-pay",
+    "pages/credit/credit",
+    "pages/mine/mine"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#0a1628",
+    "navigationBarTitleText": "绵阳充电救援·统一版",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0a1628"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#5a6a7a",
+    "selectedColor": "#00d4ff",
+    "backgroundColor": "#0a1628",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home-user/home-user",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/order-user/order-user",
+        "text": "订单"
+      },
+      {
+        "pagePath": "pages/home-driver/home-driver",
+        "text": "订单大厅"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "您的位置将用于计算司机距离与救援地址定位"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation",
+    "chooseLocation"
+  ],
+  "lazyCodeLoading": "requiredComponents",
+  "sitemapLocation": "sitemap.json",
+  "style": "v2"
+}

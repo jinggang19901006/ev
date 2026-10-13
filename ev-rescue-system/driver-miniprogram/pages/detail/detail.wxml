@@ -1,0 +1,297 @@
+<!-- pages/detail/detail.wxml -->
+<view class="detail-page">
+  <!-- 自定义导航栏 -->
+  <view class="custom-nav" style="padding-top: {{statusBarHeight}}px;">
+    <view class="nav-bar" style="height: {{navBarHeight}}px;">
+      <view class="nav-back" bindtap="onBack">
+        <text class="back-icon">‹</text>
+      </view>
+      <text class="nav-title-text">订单详情</text>
+      <view class="nav-placeholder"></view>
+    </view>
+  </view>
+  <view style="height: {{statusBarHeight + navBarHeight}}px;"></view>
+
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="loading-state">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 订单内容 -->
+  <block wx:elif="{{order}}">
+    <scroll-view scroll-y class="detail-scroll" enhanced show-scrollbar="{{false}}">
+
+      <!-- 状态进度条 -->
+      <view class="status-progress">
+        <view 
+          wx:for="{{statusSteps}}" 
+          wx:key="key" 
+          class="step-item {{index <= currentStepIndex ? 'step-active' : ''}} {{index === currentStepIndex ? 'step-current' : ''}}"
+        >
+          <view class="step-circle">
+            <text class="step-icon">{{item.icon}}</text>
+          </view>
+          <text class="step-label">{{item.label}}</text>
+          <view wx:if="{{index < statusSteps.length - 1}}" class="step-line {{index < currentStepIndex ? 'line-active' : ''}}"></view>
+        </view>
+      </view>
+
+      <!-- 订单基本信息卡片 -->
+      <view class="card card-glow order-info-card">
+        <view class="order-header-row">
+          <view class="order-vehicle-info">
+            <text class="vehicle-icon-lg">🚗</text>
+            <view class="vehicle-detail">
+              <text class="vehicle-model-lg">{{order.vehicleModel}}</text>
+              <text wx:if="{{order.plateNumber}}" class="vehicle-plate-lg">{{order.plateNumber}}</text>
+            </view>
+          </view>
+          <view class="order-price-box">
+            <text class="price-symbol">¥</text>
+            <text class="price-amount">{{order.price}}</text>
+          </view>
+        </view>
+
+        <view class="divider"></view>
+
+        <!-- 详细信息 -->
+        <view class="info-list">
+          <view class="info-row" wx:if="{{order.userName}}">
+            <text class="info-icon">👤</text>
+            <text class="info-key">客户</text>
+            <text class="info-val">{{order.userName}}</text>
+          </view>
+          <view class="info-row" wx:if="{{order.phone}}">
+            <text class="info-icon">📱</text>
+            <text class="info-key">电话</text>
+            <text class="info-val text-cyan" bindtap="onCallPhone">{{order.phone}}</text>
+          </view>
+          <view class="info-row" wx:if="{{order.batteryLevel}}">
+            <text class="info-icon">🔋</text>
+            <text class="info-key">当前电量</text>
+            <text class="info-val text-danger">{{order.batteryLevel}}%</text>
+          </view>
+          <view class="info-row" wx:if="{{order.chargeAmount}}">
+            <text class="info-icon">⚡</text>
+            <text class="info-key">充电需求</text>
+            <text class="info-val text-cyan">{{order.chargeAmount}}度</text>
+          </view>
+          <view class="info-row" wx:if="{{order.distance}}">
+            <text class="info-icon">📏</text>
+            <text class="info-key">距离</text>
+            <text class="info-val">{{order.distance}}km</text>
+          </view>
+          <view class="info-row" wx:if="{{order.createTimeText}}">
+            <text class="info-icon">🕐</text>
+            <text class="info-key">下单时间</text>
+            <text class="info-val">{{order.createTimeText}}</text>
+          </view>
+        </view>
+
+        <view class="divider" wx:if="{{order.address}}"></view>
+
+        <!-- 地址 -->
+        <view class="info-row address-row" wx:if="{{order.address}}">
+          <text class="info-icon">📍</text>
+          <view class="address-content">
+            <text class="info-key">救援地址</text>
+            <text class="address-text-lg">{{order.address}}</text>
+          </view>
+        </view>
+
+        <view class="divider" wx:if="{{order.remark}}"></view>
+
+        <!-- 备注 -->
+        <view class="info-row remark-row" wx:if="{{order.remark}}">
+          <text class="info-icon">📝</text>
+          <view class="address-content">
+            <text class="info-key">备注</text>
+            <text class="remark-text">{{order.remark}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 联系客户按钮 -->
+      <view wx:if="{{order.phone}}" class="contact-section">
+        <button class="btn btn-outline contact-btn" bindtap="onCallPhone">
+          📞 联系客户 {{order.phone}}
+        </button>
+      </view>
+
+      <!-- 收入预估 -->
+      <view class="card income-card">
+        <view class="income-header">
+          <text class="income-title">预估收入</text>
+        </view>
+        <view class="income-amount">
+          <text class="income-symbol">¥</text>
+          <text class="income-value">{{order.driverIncome}}</text>
+        </view>
+        <view class="income-detail">
+          <text class="income-detail-text">订单金额 ¥{{order.price}}</text>
+        </view>
+      </view>
+
+      <!-- 操作区域(非预览模式) -->
+      <block wx:if="{{!isPreview && currentStatus !== 'completed' && currentStatus !== 'cancelled'}}">
+        <view class="action-section">
+          <view class="action-title">操作流程</view>
+
+          <!-- accepted: 出发 -->
+          <view wx:if="{{currentStatus === 'accepted'}}" class="action-card">
+            <view class="action-step-info">
+              <text class="action-step-num">1</text>
+              <view class="action-step-text">
+                <text class="action-step-title">出发前往</text>
+                <text class="action-step-desc">前往客户救援地点</text>
+              </view>
+            </view>
+            <button class="btn btn-primary btn-lg action-btn" bindtap="onActionStart" disabled="{{processing}}">
+              {{processing ? '处理中...' : '出发前往'}}
+            </button>
+          </view>
+
+          <!-- en_route: 到达拍照 -->
+          <view wx:elif="{{currentStatus === 'en_route'}}" class="action-card">
+            <view class="action-step-info">
+              <text class="action-step-num">2</text>
+              <view class="action-step-text">
+                <text class="action-step-title">到达现场</text>
+                <text class="action-step-desc">拍摄充电前车辆照片</text>
+              </view>
+            </view>
+            <view wx:if="{{beforePhoto}}" class="photo-preview" bindtap="onPreviewImage" data-url="{{beforePhoto}}">
+              <image src="{{beforePhoto}}" mode="aspectFill"></image>
+              <text class="photo-label">充电前照片</text>
+            </view>
+            <button class="btn btn-primary btn-lg action-btn" bindtap="onActionArrive" disabled="{{processing}}">
+              {{processing ? '处理中...' : '📷 到达并拍照'}}
+            </button>
+          </view>
+
+          <!-- arrived: 开始充电 -->
+          <view wx:elif="{{currentStatus === 'arrived'}}" class="action-card">
+            <view class="action-step-info">
+              <text class="action-step-num">3</text>
+              <view class="action-step-text">
+                <text class="action-step-title">开始充电</text>
+                <text class="action-step-desc">连接设备，开始为车辆充电</text>
+              </view>
+            </view>
+            <view wx:if="{{beforePhoto}}" class="photo-preview" bindtap="onPreviewImage" data-url="{{beforePhoto}}">
+              <image src="{{beforePhoto}}" mode="aspectFill"></image>
+              <text class="photo-label">充电前照片</text>
+            </view>
+            <button class="btn btn-primary btn-lg action-btn" bindtap="onActionStartCharge" disabled="{{processing}}">
+              {{processing ? '处理中...' : '⚡ 开始充电'}}
+            </button>
+          </view>
+
+          <!-- charging: 结束充电拍照 -->
+          <view wx:elif="{{currentStatus === 'charging'}}" class="action-card">
+            <view class="action-step-info">
+              <text class="action-step-num">4</text>
+              <view class="action-step-text">
+                <text class="action-step-title">结束充电</text>
+                <text class="action-step-desc">拍摄充电完成后车辆照片</text>
+              </view>
+            </view>
+            <view wx:if="{{beforePhoto}}" class="photo-preview" bindtap="onPreviewImage" data-url="{{beforePhoto}}">
+              <image src="{{beforePhoto}}" mode="aspectFill"></image>
+              <text class="photo-label">充电前照片</text>
+            </view>
+            <view wx:if="{{afterPhoto}}" class="photo-preview" bindtap="onPreviewImage" data-url="{{afterPhoto}}">
+              <image src="{{afterPhoto}}" mode="aspectFill"></image>
+              <text class="photo-label">充电后照片</text>
+            </view>
+            <button class="btn btn-primary btn-lg action-btn" bindtap="onActionEndCharge" disabled="{{processing}}">
+              {{processing ? '处理中...' : '📷 结束充电并拍照'}}
+            </button>
+          </view>
+        </view>
+      </block>
+
+      <!-- 已完成状态 -->
+      <view wx:if="{{currentStatus === 'completed'}}" class="completed-state">
+        <view class="completed-icon">✓</view>
+        <text class="completed-title">订单已完成</text>
+        <text class="completed-desc">感谢您的服务！</text>
+      </view>
+
+      <!-- 已取消状态 -->
+      <view wx:if="{{currentStatus === 'cancelled'}}" class="completed-state">
+        <view class="cancelled-icon">✕</view>
+        <text class="completed-title">订单已取消</text>
+      </view>
+
+      <!-- 底部安全区 -->
+      <view style="height: 120rpx;"></view>
+    </scroll-view>
+  </block>
+
+  <!-- 额外费用弹窗 -->
+  <view wx:if="{{showExtraFee}}" class="modal-mask" bindtap="onCloseExtraFee">
+    <view class="modal-content" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">录入额外费用</text>
+        <text class="modal-close" bindtap="onCloseExtraFee">✕</text>
+      </view>
+
+      <view class="modal-body">
+        <view class="fee-item">
+          <view class="fee-label">
+            <text class="fee-icon">🛣️</text>
+            <text>高速费</text>
+          </view>
+          <view class="fee-input-box">
+            <text class="fee-unit">¥</text>
+            <input class="fee-input" type="digit" placeholder="0" placeholder-class="fee-placeholder" value="{{highwayFee}}" bindinput="onHighwayFeeInput" />
+          </view>
+        </view>
+
+        <view class="fee-item">
+          <view class="fee-label">
+            <text class="fee-icon">🅿️</text>
+            <text>停车费</text>
+          </view>
+          <view class="fee-input-box">
+            <text class="fee-unit">¥</text>
+            <input class="fee-input" type="digit" placeholder="0" placeholder-class="fee-placeholder" value="{{parkingFee}}" bindinput="onParkingFeeInput" />
+          </view>
+        </view>
+
+        <view class="fee-item">
+          <view class="fee-label">
+            <text class="fee-icon">💰</text>
+            <text>其他费用</text>
+          </view>
+          <view class="fee-input-box">
+            <text class="fee-unit">¥</text>
+            <input class="fee-input" type="digit" placeholder="0" placeholder-class="fee-placeholder" value="{{otherFee}}" bindinput="onOtherFeeInput" />
+          </view>
+        </view>
+
+        <view class="fee-item fee-remark-item">
+          <view class="fee-label">
+            <text class="fee-icon">📝</text>
+            <text>费用备注</text>
+          </view>
+          <input class="fee-remark-input" type="text" placeholder="选填，如：过路费明细" placeholder-class="fee-placeholder" value="{{otherFeeRemark}}" bindinput="onOtherFeeRemarkInput" />
+        </view>
+
+        <view class="fee-total">
+          <text class="fee-total-label">额外费用合计</text>
+          <text class="fee-total-amount">¥{{extraFeeTotal}}</text>
+        </view>
+      </view>
+
+      <view class="modal-footer">
+        <button class="btn btn-outline btn-lg modal-btn" bindtap="onSkipExtraFee">跳过</button>
+        <button class="btn btn-primary btn-lg modal-btn" bindtap="onConfirmComplete" disabled="{{processing}}">
+          {{processing ? '提交中...' : '完成订单'}}
+        </button>
+      </view>
+    </view>
+  </view>
+</view>

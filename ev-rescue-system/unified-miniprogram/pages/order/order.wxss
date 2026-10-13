@@ -1,0 +1,569 @@
+/* pages/order/order.wxss - 下单页样式 */
+
+/* ===== 自定义导航栏 ===== */
+.nav-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: linear-gradient(180deg, #0d2540 0%, #0a1628 100%);
+  border-bottom: 1rpx solid rgba(0, 212, 255, 0.1);
+}
+
+.nav-content {
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24rpx;
+}
+
+.nav-back {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.back-arrow {
+  width: 24rpx;
+  height: 24rpx;
+  border-left: 4rpx solid #e8eef5;
+  border-bottom: 4rpx solid #e8eef5;
+  transform: rotate(45deg);
+  margin-left: 8rpx;
+}
+
+.nav-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #e8eef5;
+}
+
+.nav-placeholder {
+  width: 64rpx;
+}
+
+/* ===== 夜间提示 ===== */
+.night-banner {
+  display: flex;
+  align-items: center;
+  margin: 24rpx 24rpx 0;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1rpx solid rgba(245, 158, 11, 0.25);
+  border-radius: 16rpx;
+  padding: 16rpx 24rpx;
+}
+
+.night-banner-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: #f59e0b;
+  margin-right: 16rpx;
+  box-shadow: 0 0 10rpx #f59e0b;
+}
+
+.night-banner text {
+  font-size: 24rpx;
+  color: #f59e0b;
+}
+
+/* ===== 表单section ===== */
+.form-section {
+  margin-top: 40rpx;
+  padding: 0 24rpx;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.step-num {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00d4ff 0%, #0891b2 100%);
+  color: #0a1628;
+  font-size: 28rpx;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 212, 255, 0.3);
+}
+
+.section-label {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #e8eef5;
+}
+
+/* ===== 车型选择卡片 ===== */
+.vehicle-types {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.vehicle-card {
+  background: linear-gradient(135deg, #112441 0%, #0d1b2e 100%);
+  border: 2rpx solid #1e3556;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.vehicle-card.active {
+  border-color: #00d4ff;
+  box-shadow: 0 0 24rpx rgba(0, 212, 255, 0.2);
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.08) 0%, #0d1b2e 100%);
+}
+
+.vehicle-card-top {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.vehicle-badge {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 18rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  font-weight: 800;
+  margin-right: 20rpx;
+}
+
+.vehicle-badge.small {
+  background: rgba(0, 212, 255, 0.15);
+  color: #00d4ff;
+  border: 1rpx solid rgba(0, 212, 255, 0.3);
+}
+
+.vehicle-badge.medium {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1rpx solid rgba(16, 185, 129, 0.3);
+}
+
+.vehicle-badge.large {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1rpx solid rgba(245, 158, 11, 0.3);
+}
+
+.vehicle-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.vehicle-card-name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #e8eef5;
+}
+
+.vehicle-card-desc {
+  font-size: 24rpx;
+  color: #5a6a7a;
+  margin-top: 4rpx;
+}
+
+.vehicle-check {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background: #00d4ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.check-icon {
+  width: 18rpx;
+  height: 10rpx;
+  border-left: 4rpx solid #0a1628;
+  border-bottom: 4rpx solid #0a1628;
+  transform: rotate(-45deg);
+  margin-top: -4rpx;
+}
+
+.vehicle-card-price {
+  display: flex;
+  gap: 16rpx;
+}
+
+.vcp-item {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12rpx;
+  padding: 12rpx 0;
+  gap: 4rpx;
+}
+
+.vcp-item.active {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.vcp-label {
+  font-size: 22rpx;
+  color: #5a6a7a;
+}
+
+.vcp-value {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #e8eef5;
+}
+
+.vcp-item.active .vcp-value {
+  color: #f59e0b;
+}
+
+.vcp-unit {
+  font-size: 20rpx;
+  color: #5a6a7a;
+}
+
+/* ===== 表单卡片 ===== */
+.card {
+  background: linear-gradient(135deg, #112441 0%, #0d1b2e 100%);
+  border: 1rpx solid #1e3556;
+  border-radius: 24rpx;
+  padding: 8rpx 32rpx;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 0;
+  min-height: 48rpx;
+}
+
+.form-row.col {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.form-label {
+  font-size: 28rpx;
+  color: #8b9bb0;
+  width: 200rpx;
+  flex-shrink: 0;
+}
+
+.form-row.col .form-label {
+  width: auto;
+  margin-bottom: 16rpx;
+}
+
+.form-hint {
+  font-size: 22rpx;
+  color: #5a6a7a;
+  margin-top: 4rpx;
+}
+
+.form-input {
+  flex: 1;
+  height: 72rpx;
+  background: transparent;
+  color: #e8eef5;
+  font-size: 30rpx;
+  text-align: right;
+}
+
+.placeholder {
+  color: #3a4a5a;
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 120rpx;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1rpx solid #1e3556;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  color: #e8eef5;
+  font-size: 28rpx;
+}
+
+.form-divider {
+  height: 1rpx;
+  background: #1e3556;
+}
+
+/* ===== 电量滑块 ===== */
+.battery-value {
+  flex: 1;
+  text-align: right;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #00d4ff;
+}
+
+.battery-slider {
+  margin: 8rpx 0 20rpx;
+}
+
+/* ===== 仪表盘开关 ===== */
+.dashboard-off-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-warning {
+  display: flex;
+  align-items: center;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1rpx solid rgba(239, 68, 68, 0.2);
+  border-radius: 12rpx;
+  padding: 12rpx 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.warning-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: #ef4444;
+  margin-right: 12rpx;
+  box-shadow: 0 0 10rpx #ef4444;
+}
+
+.dashboard-warning text {
+  font-size: 22rpx;
+  color: #ef4444;
+}
+
+/* ===== 地址选择 ===== */
+.address-picker {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 0;
+}
+
+.address-picker-icon {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+}
+
+.pin-icon {
+  width: 24rpx;
+  height: 24rpx;
+  border-radius: 50% 50% 50% 0;
+  background: #00d4ff;
+  transform: rotate(-45deg);
+  box-shadow: 0 0 12rpx rgba(0, 212, 255, 0.4);
+  position: relative;
+}
+
+.pin-icon::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: #0a1628;
+}
+
+.address-picker-text {
+  flex: 1;
+}
+
+.address-text {
+  font-size: 30rpx;
+  color: #e8eef5;
+}
+
+.address-placeholder {
+  font-size: 30rpx;
+  color: #3a4a5a;
+}
+
+.address-picker-arrow text {
+  font-size: 32rpx;
+  color: #5a6a7a;
+}
+
+/* ===== 价格预估卡片 ===== */
+.estimate-card {
+  margin: 40rpx 24rpx 0;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.08) 0%, rgba(16, 185, 129, 0.05) 100%);
+  border: 1rpx solid rgba(0, 212, 255, 0.2);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  position: relative;
+  overflow: hidden;
+}
+
+.estimate-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3rpx;
+  background: linear-gradient(90deg, transparent, #00d4ff, #10b981, transparent);
+}
+
+.estimate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.estimate-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #e8eef5;
+}
+
+.estimate-night-badge {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1rpx solid rgba(245, 158, 11, 0.3);
+  border-radius: 12rpx;
+  padding: 4rpx 16rpx;
+}
+
+.estimate-night-badge text {
+  font-size: 22rpx;
+  color: #f59e0b;
+}
+
+.estimate-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.estimate-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.estimate-label {
+  font-size: 26rpx;
+  color: #8b9bb0;
+}
+
+.estimate-value {
+  font-size: 28rpx;
+  color: #e8eef5;
+  font-weight: 600;
+}
+
+.estimate-divider {
+  height: 1rpx;
+  background: rgba(0, 212, 255, 0.15);
+  margin: 8rpx 0;
+}
+
+.estimate-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.total-label {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #e8eef5;
+}
+
+.total-amount {
+  display: flex;
+  align-items: baseline;
+}
+
+.total-currency {
+  font-size: 28rpx;
+  color: #00d4ff;
+  font-weight: 600;
+}
+
+.total-value {
+  font-size: 52rpx;
+  font-weight: 800;
+  color: #00d4ff;
+  margin-left: 4rpx;
+}
+
+.estimate-note {
+  margin-top: 16rpx;
+}
+
+.estimate-note text {
+  font-size: 22rpx;
+  color: #5a6a7a;
+}
+
+/* ===== 提交区域 ===== */
+.submit-section {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(10, 22, 40, 0.95);
+  backdrop-filter: blur(20rpx);
+  border-top: 1rpx solid rgba(0, 212, 255, 0.1);
+  padding: 20rpx 24rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  z-index: 50;
+}
+
+.submit-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.summary-label {
+  font-size: 22rpx;
+  color: #5a6a7a;
+}
+
+.summary-price {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: #00d4ff;
+}
+
+.submit-btn {
+  flex: 1;
+}
+
+.pulse {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}

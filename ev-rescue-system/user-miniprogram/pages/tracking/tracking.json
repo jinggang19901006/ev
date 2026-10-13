@@ -1,0 +1,5 @@
+{
+  "navigationBarTitleText": "订单追踪",
+  "navigationStyle": "custom",
+  "enablePullDownRefresh": true
+}

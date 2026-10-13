@@ -1,0 +1,406 @@
+/**
+ * app.wxss - 全局样式 深色科技感主题
+ * 绵阳24小时新能源应急充电救援 - 用户端
+ * 主色调: 深蓝(#0a1628) + 青色(#00d4ff) + 绿色(#10b981)
+ */
+
+/* ===== 主题变量 ===== */
+page {
+  --color-bg: #0a1628;
+  --color-bg-light: #0d1b2e;
+  --color-card: #112441;
+  --color-card-hover: #163055;
+  --color-primary: #00d4ff;
+  --color-primary-dark: #0891b2;
+  --color-primary-light: #5ce5ff;
+  --color-success: #10b981;
+  --color-success-dark: #059669;
+  --color-text: #e8eef5;
+  --color-text-secondary: #8b9bb0;
+  --color-text-muted: #5a6a7a;
+  --color-border: #1e3556;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #00d4ff;
+  --color-purple: #8b5cf6;
+  --radius-sm: 12rpx;
+  --radius-md: 20rpx;
+  --radius-lg: 28rpx;
+  --radius-xl: 36rpx;
+  --shadow-glow: 0 0 24rpx rgba(0, 212, 255, 0.3);
+  --shadow-card: 0 4rpx 24rpx rgba(0, 0, 0, 0.4);
+  --shadow-primary: 0 8rpx 32rpx rgba(0, 212, 255, 0.25);
+
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 28rpx;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ===== 基础重置 ===== */
+view, text, scroll-view, swiper, picker {
+  box-sizing: border-box;
+}
+
+/* ===== 通用布局 ===== */
+.container {
+  padding: 0 0 140rpx 0;
+  min-height: 100vh;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-between {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-1 {
+  flex: 1;
+  min-width: 0;
+}
+
+.flex-wrap {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+/* ===== 卡片样式 ===== */
+.card {
+  background: linear-gradient(135deg, #112441 0%, #0d1b2e 100%);
+  border-radius: var(--radius-lg);
+  padding: 32rpx;
+  margin: 0 24rpx 24rpx;
+  box-shadow: var(--shadow-card);
+  border: 1rpx solid var(--color-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-glass {
+  background: rgba(20, 40, 70, 0.6);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+  border: 1rpx solid rgba(0, 212, 255, 0.12);
+  border-radius: var(--radius-lg);
+  padding: 32rpx;
+  margin: 0 24rpx 24rpx;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-glow::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4rpx;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+}
+
+/* ===== 按钮样式 ===== */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-radius: var(--radius-md);
+  font-size: 32rpx;
+  font-weight: 600;
+  border: none;
+  transition: all 0.2s ease;
+  line-height: 88rpx;
+}
+
+.btn::after {
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #00d4ff 0%, #0891b2 100%);
+  color: #0a1628;
+  box-shadow: 0 8rpx 24rpx rgba(0, 212, 255, 0.35);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+  box-shadow: 0 4rpx 16rpx rgba(0, 212, 255, 0.3);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(16, 185, 129, 0.3);
+}
+
+.btn-success:active {
+  transform: scale(0.98);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 2rpx solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.btn-outline:active {
+  background: var(--color-card-hover);
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.15);
+  border: 2rpx solid var(--color-danger);
+  color: var(--color-danger);
+}
+
+.btn-danger:active {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.btn-disabled {
+  background: var(--color-card) !important;
+  color: var(--color-text-muted) !important;
+  box-shadow: none !important;
+}
+
+.btn-lg {
+  height: 100rpx;
+  line-height: 100rpx;
+  font-size: 36rpx;
+  border-radius: 50rpx;
+}
+
+.btn-sm {
+  height: 64rpx;
+  line-height: 64rpx;
+  font-size: 26rpx;
+  padding: 0 32rpx;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* ===== 文字样式 ===== */
+.text-primary { color: var(--color-primary); }
+.text-success { color: var(--color-success); }
+.text-muted { color: var(--color-text-muted); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-danger { color: var(--color-danger); }
+.text-warning { color: var(--color-warning); }
+.text-bold { font-weight: 700; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+.text-xs { font-size: 20rpx; }
+.text-sm { font-size: 24rpx; }
+.text-md { font-size: 28rpx; }
+.text-lg { font-size: 36rpx; }
+.text-xl { font-size: 44rpx; }
+.text-2xl { font-size: 56rpx; }
+
+/* ===== 状态标签 ===== */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6rpx 20rpx;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.tag-pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-warning);
+  border: 1rpx solid rgba(245, 158, 11, 0.3);
+}
+
+.tag-accepted {
+  background: rgba(0, 212, 255, 0.15);
+  color: var(--color-primary);
+  border: 1rpx solid rgba(0, 212, 255, 0.3);
+}
+
+.tag-en_route {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1rpx solid rgba(59, 130, 246, 0.3);
+}
+
+.tag-arrived {
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  border: 1rpx solid rgba(139, 92, 246, 0.3);
+}
+
+.tag-charging {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+  border: 1rpx solid rgba(16, 185, 129, 0.3);
+}
+
+.tag-completed {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1rpx solid rgba(16, 185, 129, 0.2);
+}
+
+.tag-cancelled {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-danger);
+  border: 1rpx solid rgba(239, 68, 68, 0.3);
+}
+
+.tag-paid {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+  border: 1rpx solid rgba(16, 185, 129, 0.3);
+}
+
+.tag-unpaid {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-danger);
+  border: 1rpx solid rgba(239, 68, 68, 0.3);
+}
+
+/* ===== 输入框 ===== */
+.input-group {
+  margin-bottom: 32rpx;
+}
+
+.input-label {
+  font-size: 28rpx;
+  color: var(--color-text-secondary);
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.input-field {
+  width: 100%;
+  height: 96rpx;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2rpx solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0 32rpx;
+  color: var(--color-text);
+  font-size: 32rpx;
+  transition: border-color 0.2s ease;
+}
+
+.input-field:focus {
+  border-color: var(--color-primary);
+}
+
+.textarea-field {
+  width: 100%;
+  min-height: 160rpx;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2rpx solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 24rpx 32rpx;
+  color: var(--color-text);
+  font-size: 28rpx;
+  transition: border-color 0.2s ease;
+}
+
+/* ===== 分割线 ===== */
+.divider {
+  height: 1rpx;
+  background: var(--color-border);
+  margin: 24rpx 0;
+}
+
+/* ===== 空状态 ===== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 60rpx;
+}
+
+.empty-icon {
+  font-size: 120rpx;
+  margin-bottom: 24rpx;
+  opacity: 0.2;
+}
+
+.empty-text {
+  color: var(--color-text-muted);
+  font-size: 28rpx;
+}
+
+/* ===== 间距 ===== */
+.mt-xs { margin-top: 8rpx; }
+.mt-sm { margin-top: 16rpx; }
+.mt-md { margin-top: 24rpx; }
+.mt-lg { margin-top: 40rpx; }
+.mt-xl { margin-top: 64rpx; }
+.mb-xs { margin-bottom: 8rpx; }
+.mb-sm { margin-bottom: 16rpx; }
+.mb-md { margin-bottom: 24rpx; }
+.mb-lg { margin-bottom: 40rpx; }
+.ml-sm { margin-left: 16rpx; }
+.mr-sm { margin-right: 16rpx; }
+.p-sm { padding: 16rpx; }
+.p-md { padding: 24rpx; }
+.p-lg { padding: 40rpx; }
+.px-md { padding-left: 24rpx; padding-right: 24rpx; }
+.py-md { padding-top: 24rpx; padding-bottom: 24rpx; }
+
+/* ===== 脉冲动画 ===== */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ===== 渐入动画 ===== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+/* ===== 旋转动画 ===== */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}

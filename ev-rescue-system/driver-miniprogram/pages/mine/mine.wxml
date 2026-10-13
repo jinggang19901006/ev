@@ -1,0 +1,230 @@
+<!-- pages/mine/mine.wxml -->
+<view class="mine-page">
+  <!-- 自定义导航栏 -->
+  <view class="custom-nav" style="padding-top: {{statusBarHeight}}px;">
+    <view class="nav-bar" style="height: {{navBarHeight}}px;">
+      <text class="nav-title-text">我的</text>
+    </view>
+  </view>
+  <view style="height: {{statusBarHeight + navBarHeight}}px;"></view>
+
+  <scroll-view scroll-y class="mine-scroll" enhanced show-scrollbar="{{false}}">
+
+    <!-- 司机信息头部 -->
+    <view class="profile-header">
+      <view class="profile-bg-decoration">
+        <view class="profile-circle-1"></view>
+        <view class="profile-circle-2"></view>
+      </view>
+
+      <view class="profile-info">
+        <view class="avatar-box" bindtap="onPreviewAvatar">
+          <image wx:if="{{driver.avatar}}" class="avatar-img" src="{{driver.avatar}}" mode="aspectFill"></image>
+          <view wx:else class="avatar-default">
+            <text class="avatar-text">{{driver.name ? driver.name[0] : '司'}}</text>
+          </view>
+        </view>
+        <view class="profile-detail">
+          <view class="profile-name-row">
+            <text class="profile-name">{{driver.name || '司机'}}</text>
+            <view class="status-badge {{driverStatus}}" bindtap="onShowStatusPicker">
+              <view class="status-badge-dot"></view>
+              <text>{{driverStatus === 'online' ? '在线' : driverStatus === 'busy' ? '忙碌' : '离线'}}</text>
+            </view>
+          </view>
+          <text class="profile-phone">{{driver.phone || '未绑定手机号'}}</text>
+          <text wx:if="{{driver.id || driver.driverId}}" class="profile-id">ID: {{driver.id || driver.driverId}}</text>
+        </view>
+      </view>
+
+      <!-- 状态切换按钮 -->
+      <view class="status-switch-btn" bindtap="onShowStatusPicker">
+        <text class="switch-text">切换状态</text>
+        <text class="switch-arrow">›</text>
+      </view>
+    </view>
+
+    <!-- Tab切换 -->
+    <view class="tab-bar">
+      <view class="tab-item {{activeTab === 'earnings' ? 'tab-active' : ''}}" data-tab="earnings" bindtap="onTabChange">
+        <text>收入统计</text>
+      </view>
+      <view class="tab-item {{activeTab === 'orders' ? 'tab-active' : ''}}" data-tab="orders" bindtap="onTabChange">
+        <text>订单历史</text>
+      </view>
+    </view>
+
+    <!-- 收入统计 -->
+    <view wx:if="{{activeTab === 'earnings'}}" class="tab-content">
+      <!-- 今日收入 -->
+      <view class="card income-card income-today">
+        <view class="income-card-header">
+          <text class="income-card-title">今日收入</text>
+          <text class="income-card-date">{{driverStatus === 'online' ? '在线中' : ''}}</text>
+        </view>
+        <view class="income-card-amount">
+          <text class="income-amount-symbol">¥</text>
+          <text class="income-amount-value">{{earnings.today.amount}}</text>
+        </view>
+        <view class="income-card-footer">
+          <text class="income-order-count">今日完成 {{earnings.today.count}} 单</text>
+        </view>
+      </view>
+
+      <!-- 本月收入 -->
+      <view class="card income-card income-month">
+        <view class="income-card-header">
+          <text class="income-card-title">本月收入</text>
+        </view>
+        <view class="income-card-amount">
+          <text class="income-amount-symbol">¥</text>
+          <text class="income-amount-value">{{earnings.month.amount}}</text>
+        </view>
+        <view class="income-card-footer">
+          <text class="income-order-count">本月完成 {{earnings.month.count}} 单</text>
+        </view>
+      </view>
+
+      <!-- 累计收入 -->
+      <view class="card income-card income-total">
+        <view class="income-card-header">
+          <text class="income-card-title">累计收入</text>
+        </view>
+        <view class="income-card-amount">
+          <text class="income-amount-symbol">¥</text>
+          <text class="income-amount-value">{{earnings.total.amount}}</text>
+        </view>
+        <view class="income-card-footer">
+          <text class="income-order-count">累计完成 {{earnings.total.count}} 单</text>
+        </view>
+      </view>
+
+      <!-- 统计概览 -->
+      <view class="card stats-overview">
+        <view class="stats-item">
+          <text class="stats-value text-primary">{{earnings.today.count}}</text>
+          <text class="stats-label">今日订单</text>
+        </view>
+        <view class="stats-divider"></view>
+        <view class="stats-item">
+          <text class="stats-value text-cyan">{{earnings.month.count}}</text>
+          <text class="stats-label">本月订单</text>
+        </view>
+        <view class="stats-divider"></view>
+        <view class="stats-item">
+          <text class="stats-value text-success">{{earnings.total.count}}</text>
+          <text class="stats-label">累计订单</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 订单历史 -->
+    <view wx:if="{{activeTab === 'orders'}}" class="tab-content">
+      <view wx:if="{{orders.length === 0 && !loading}}" class="empty-state">
+        <view class="empty-icon">📋</view>
+        <text class="empty-text">暂无订单记录</text>
+      </view>
+
+      <view wx:else class="order-history-list">
+        <view 
+          wx:for="{{orders}}" 
+          wx:key="id"
+          class="history-card"
+          data-id="{{item.id}}"
+          bindtap="onOrderTap"
+        >
+          <view class="history-header">
+            <view class="history-vehicle">
+              <text class="history-vehicle-icon">🚗</text>
+              <text class="history-vehicle-model">{{item.vehicleModel}}</text>
+            </view>
+            <text class="tag {{item.statusClass}}">{{item.statusText}}</text>
+          </view>
+          <view class="history-address">
+            <text class="history-address-icon">📍</text>
+            <text class="history-address-text">{{item.address}}</text>
+          </view>
+          <view class="history-footer">
+            <text class="history-time">{{item.createTimeText}}</text>
+            <view class="history-income">
+              <text class="history-income-label">收入</text>
+              <text class="history-income-amount">¥{{item.driverIncome}}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 加载更多 -->
+        <view wx:if="{{loading}}" class="loading-more">
+          <view class="loading-spinner-sm"></view>
+          <text class="loading-text">加载中...</text>
+        </view>
+        <view wx:elif="{{!hasMore && orders.length > 0}}" class="list-footer">
+          <text class="footer-text">— 没有更多了 —</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 功能菜单 -->
+    <view class="card menu-section">
+      <view class="menu-item" bindtap="onGoWallet">
+        <text class="menu-icon">💰</text>
+        <text class="menu-text">我的钱包</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-divider"></view>
+      <view class="menu-item">
+        <text class="menu-icon">📞</text>
+        <text class="menu-text">联系客服</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-divider"></view>
+      <view class="menu-item">
+        <text class="menu-icon">📄</text>
+        <text class="menu-text">服务协议</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-divider"></view>
+      <view class="menu-item">
+        <text class="menu-icon">ℹ️</text>
+        <text class="menu-text">关于我们</text>
+        <text class="menu-arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 退出登录 -->
+    <view class="logout-section">
+      <button class="btn btn-danger btn-lg logout-btn" bindtap="onLogout">退出登录</button>
+    </view>
+
+    <!-- 底部安全区 -->
+    <view style="height: 120rpx;"></view>
+  </scroll-view>
+
+  <!-- 状态选择弹窗 -->
+  <view wx:if="{{showStatusPicker}}" class="modal-mask" bindtap="onCloseStatusPicker">
+    <view class="status-picker-content" catchtap="">
+      <view class="picker-header">
+        <text class="picker-title">切换工作状态</text>
+        <text class="picker-close" bindtap="onCloseStatusPicker">✕</text>
+      </view>
+      <view class="picker-options">
+        <view 
+          wx:for="{{statusOptions}}" 
+          wx:key="value"
+          class="picker-option {{driverStatus === item.value ? 'option-active' : ''}}"
+          data-status="{{item.value}}"
+          bindtap="onSelectStatus"
+        >
+          <view class="option-left">
+            <view class="option-dot {{item.value}}"></view>
+            <view class="option-info">
+              <text class="option-label">{{item.label}}</text>
+              <text class="option-desc">{{item.desc}}</text>
+            </view>
+          </view>
+          <view wx:if="{{driverStatus === item.value}}" class="option-check">✓</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
