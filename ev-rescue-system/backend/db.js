@@ -127,7 +127,7 @@ class JSONDatabase {
       this.data.admins.push({
         id: 1,
         username: process.env.ADMIN_USERNAME || 'admin',
-        password: process.env.ADMIN_PASSWORD || 'admin123',
+        password: process.env.ADMIN_PASSWORD || process.env.MYSQL_PASSWORD || 'admin123',
         name: '系统管理员',
         created_at: this.now()
       });

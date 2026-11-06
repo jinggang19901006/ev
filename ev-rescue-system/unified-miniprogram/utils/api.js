@@ -20,13 +20,11 @@ function getFileBaseUrl() {
   return (app && app.globalData && app.globalData.fileBaseUrl) || FILE_BASE_URL;
 }
 
-function useCloudContainer(app) {
+function useCloudContainer() {
   return Boolean(
     env.USE_CLOUD_CONTAINER &&
     wx.cloud &&
-    app &&
-    app.globalData &&
-    app.globalData.useCloudContainer
+    typeof wx.cloud.callContainer === 'function'
   );
 }
 
@@ -39,6 +37,8 @@ const request = (path, options = {}) => {
   }, options.header || {});
   options.timeout = options.timeout || 15000;
   const showLoading = options.showLoading !== false;
+  const cloudMode = Boolean(env.USE_CLOUD_CONTAINER);
+  const cloudAvailable = useCloudContainer();
 
   return new Promise((resolve, reject) => {
     if (showLoading) wx.showLoading && wx.showLoading({ title: '加载中', mask: true });
@@ -65,10 +65,15 @@ const request = (path, options = {}) => {
         if (showLoading) wx.hideLoading && wx.hideLoading();
         const isDevtools = !!(app && app.globalData && app.globalData.isDevtools);
         const host = (app && app.globalData && app.globalData.apiHost) || getBaseUrl();
-        const message = isDevtools
-          ? '无法连接本地服务，请确认后端已启动'
-          : '无法连接服务，请确认手机与电脑连接同一WiFi';
-        console.error('[network] request failed:', getBaseUrl() + path, err);
+        const message = cloudMode
+          ? '云托管服务连接失败，请稍后重试'
+          : (isDevtools
+            ? '无法连接本地服务，请确认后端已启动'
+            : '无法连接服务，请确认手机与电脑连接同一WiFi');
+        const target = cloudMode
+          ? `cloud://${env.CLOUD_ENV_ID}/${env.CLOUD_SERVICE}/api${path}`
+          : getBaseUrl() + path;
+        console.error('[network] request failed:', target, err);
         wx.showToast && wx.showToast({ title: message, icon: 'none', duration: 3000 });
         const error = new Error(message);
         error.cause = err;
@@ -77,12 +82,19 @@ const request = (path, options = {}) => {
       }
     };
 
-    if (useCloudContainer(app)) {
+    if (cloudMode && !cloudAvailable) {
+      requestOptions.fail(new Error('当前微信基础库不支持 wx.cloud.callContainer'));
+      return;
+    }
+
+    if (cloudMode) {
+      const cloudEnvId = (app && app.globalData && app.globalData.cloudEnvId) || env.CLOUD_ENV_ID;
+      const cloudService = (app && app.globalData && app.globalData.cloudService) || env.CLOUD_SERVICE;
       wx.cloud.callContainer(Object.assign({}, requestOptions, {
-        config: { env: app.globalData.cloudEnvId },
+        config: { env: cloudEnvId },
         path: '/api' + path,
         header: Object.assign({}, requestOptions.header, {
-          'X-WX-SERVICE': app.globalData.cloudService
+          'X-WX-SERVICE': cloudService
         })
       }));
     } else {
@@ -116,7 +128,7 @@ function uploadImage(filePath) {
     || wx.getStorageSync('uni_token')
     || wx.getStorageSync('token')
     || '';
-  if (useCloudContainer(app)) {
+  if (useCloudContainer()) {
     const extensionMatch = String(filePath).match(/\.(jpe?g|png|webp)(?:\?.*)?$/i);
     const ext = extensionMatch ? `.${extensionMatch[1].toLowerCase()}` : '.jpg';
     return new Promise((resolve, reject) => {

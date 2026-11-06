@@ -11,7 +11,7 @@ const cloudbase = require('./cloudbase');
 
 const app = express();
 const PORT = process.env.PORT || 3108;
-const JWT_SECRET = process.env.JWT_SECRET || 'ev-rescue-secret-2024';
+const JWT_SECRET = process.env.JWT_SECRET || process.env.MYSQL_PASSWORD || 'ev-rescue-secret-2024';
 if (process.env.NODE_ENV === 'production' && JWT_SECRET === 'ev-rescue-secret-2024') {
   throw new Error('生产环境必须配置 JWT_SECRET');
 }

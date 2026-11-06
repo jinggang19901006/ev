@@ -10,6 +10,7 @@ COPY admin-dashboard/ /app/admin-dashboard/
 
 ENV NODE_ENV=production
 ENV PORT=3108
+ENV CLOUDBASE_ENV_ID=prod-d5gnin1k2bb74c518
 ENV RESCUE_DB_FILE=/data/rescue.json
 ENV UPLOAD_DIR=/data/uploads
 

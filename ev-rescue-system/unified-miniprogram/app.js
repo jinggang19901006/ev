@@ -26,7 +26,7 @@ App({
   },
 
   onLaunch() {
-    if (env.USE_CLOUD_CONTAINER && wx.cloud) {
+    if (env.USE_CLOUD_CONTAINER && wx.cloud && typeof wx.cloud.callContainer === 'function') {
       wx.cloud.init({
         env: env.CLOUD_ENV_ID,
         traceUser: true
@@ -78,15 +78,20 @@ App({
     } catch (e) { /* ignore invalid local override */ }
 
     this.globalData.isDevtools = isDevtools;
-    this.globalData.useCloudContainer = Boolean(env.USE_CLOUD_CONTAINER);
+    const cloudAvailable = Boolean(wx.cloud && typeof wx.cloud.callContainer === 'function');
+    this.globalData.useCloudContainer = Boolean(env.USE_CLOUD_CONTAINER && cloudAvailable);
     this.globalData.cloudEnvId = env.CLOUD_ENV_ID || '';
     this.globalData.cloudService = env.CLOUD_SERVICE || '';
     this.globalData.apiHost = host;
     this.globalData.apiUrl = host + '/api';
     this.globalData.fileBaseUrl = host;
-    console.info(this.globalData.useCloudContainer
-      ? `[network] 云托管服务: ${this.globalData.cloudService}`
-      : `[network] ${isDevtools ? '开发者工具' : '真机'}接口: ${this.globalData.apiUrl}`);
+    if (env.USE_CLOUD_CONTAINER && !cloudAvailable) {
+      console.error('[network] 当前微信基础库不支持 wx.cloud.callContainer，请升级开发者工具和基础库');
+    } else {
+      console.info(this.globalData.useCloudContainer
+        ? `[network] 云托管服务: ${this.globalData.cloudService}`
+        : `[network] ${isDevtools ? '开发者工具' : '真机'}接口: ${this.globalData.apiUrl}`);
+    }
   },
 
   // ========== 登录态存取 ==========

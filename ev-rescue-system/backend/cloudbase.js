@@ -5,9 +5,11 @@ const STATE_COLLECTION = process.env.CLOUDBASE_STATE_COLLECTION || 'ev_rescue_st
 const STATE_DOCUMENT = process.env.CLOUDBASE_STATE_DOCUMENT || 'primary';
 
 let app;
+let mysqlPool;
+let mysqlReady;
 
 function isEnabled() {
-  return Boolean(ENV_ID);
+  return Boolean(ENV_ID || process.env.TCB_ENV);
 }
 
 function getApp() {
@@ -16,7 +18,7 @@ function getApp() {
   }
   if (!app) {
     const cloudbase = require('@cloudbase/node-sdk');
-    const options = { env: ENV_ID };
+    const options = { env: ENV_ID || process.env.TCB_ENV };
     if (process.env.EV_CLOUDBASE_APIKEY) {
       options.accessKey = process.env.EV_CLOUDBASE_APIKEY;
     }
@@ -25,7 +27,73 @@ function getApp() {
   return app;
 }
 
+function hasMySQL() {
+  return Boolean(
+    process.env.MYSQL_ADDRESS &&
+    process.env.MYSQL_USERNAME &&
+    process.env.MYSQL_PASSWORD
+  );
+}
+
+function getInitialState() {
+  if (!process.env.RESCUE_INITIAL_STATE_BASE64) return null;
+  return JSON.parse(
+    Buffer.from(process.env.RESCUE_INITIAL_STATE_BASE64, 'base64').toString('utf8')
+  );
+}
+
+async function getMySQLPool() {
+  if (!mysqlPool) {
+    const mysql = require('mysql2/promise');
+    const [host, port] = String(process.env.MYSQL_ADDRESS).split(':');
+    const database = process.env.MYSQL_DATABASE || 'ev_rescue';
+    if (!/^[a-zA-Z0-9_]+$/.test(database)) {
+      throw new Error('MYSQL_DATABASE 只能包含字母、数字和下划线');
+    }
+    const connectionOptions = {
+      host,
+      port: Number(port) || 3306,
+      user: process.env.MYSQL_USERNAME,
+      password: process.env.MYSQL_PASSWORD,
+      enableKeepAlive: true
+    };
+    const bootstrapConnection = await mysql.createConnection(connectionOptions);
+    try {
+      await bootstrapConnection.query(
+        `CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+      );
+    } finally {
+      await bootstrapConnection.end();
+    }
+    mysqlPool = mysql.createPool({
+      ...connectionOptions,
+      database,
+      connectionLimit: 3,
+    });
+  }
+  if (!mysqlReady) {
+    mysqlReady = mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS ev_rescue_state (
+        state_key VARCHAR(64) PRIMARY KEY,
+        payload LONGTEXT NOT NULL,
+        updated_at DATETIME NOT NULL
+      ) CHARACTER SET utf8mb4
+    `);
+  }
+  await mysqlReady;
+  return mysqlPool;
+}
+
 async function loadState() {
+  if (hasMySQL()) {
+    const pool = await getMySQLPool();
+    const [rows] = await pool.execute(
+      'SELECT payload FROM ev_rescue_state WHERE state_key = ? LIMIT 1',
+      [STATE_DOCUMENT]
+    );
+    return rows[0] ? JSON.parse(rows[0].payload) : getInitialState();
+  }
+
   let result;
   try {
     result = await getApp()
@@ -38,10 +106,22 @@ async function loadState() {
     throw error;
   }
   const document = result && Array.isArray(result.data) ? result.data[0] : null;
-  return document && document.payload ? document.payload : null;
+  if (!document) return getInitialState();
+  return document.payload || (document.data && document.data.payload) || null;
 }
 
 async function saveState(payload) {
+  if (hasMySQL()) {
+    const pool = await getMySQLPool();
+    await pool.execute(
+      `INSERT INTO ev_rescue_state (state_key, payload, updated_at)
+       VALUES (?, ?, NOW())
+       ON DUPLICATE KEY UPDATE payload = VALUES(payload), updated_at = NOW()`,
+      [STATE_DOCUMENT, JSON.stringify(payload)]
+    );
+    return;
+  }
+
   await getApp()
     .database()
     .collection(STATE_COLLECTION)
@@ -73,7 +153,7 @@ async function uploadBuffer(buffer, originalName) {
 }
 
 module.exports = {
-  envId: ENV_ID,
+  envId: ENV_ID || process.env.TCB_ENV || '',
   isEnabled,
   loadState,
   saveState,

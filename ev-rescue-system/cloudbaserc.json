@@ -1,7 +1,7 @@
 {
-  "envId": "maidongyuan-d8gakruxv24b1be13",
+  "envId": "prod-d5gnin1k2bb74c518",
   "$schema": "https://static.cloudbase.net/cli/cloudbaserc.schema.json",
   "cloudrun": {
-    "name": "ev-rescue-api"
+    "name": "express-m64e"
   }
 }
