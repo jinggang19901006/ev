@@ -1,7 +1,8 @@
 const db = require('../db');
 const { calculatePrice } = require('./pricing');
+const time = require('./time');
 
-const LOCATION_MAX_AGE_MS = 15 * 60 * 1000;
+const LOCATION_MAX_AGE_MS = 30 * 60 * 1000;
 const ROUTE_CACHE_TTL_MS = 60 * 1000;
 const ROUTE_TIMEOUT_MS = 5000;
 const TENCENT_DIRECTION_ENDPOINT = 'https://apis.map.qq.com/ws/direction/v1/driving/';
@@ -128,16 +129,12 @@ async function getTencentDrivingRoute(lat1, lng1, lat2, lng2, options = {}) {
 }
 
 function parseLocationTime(value) {
-  if (!value) return null;
-  const normalized = String(value).replace(' ', 'T');
-  const timestamp = new Date(/[zZ]|[+-]\d{2}:\d{2}$/.test(normalized) ? normalized : normalized + 'Z').getTime();
+  const timestamp = time.parse(value).getTime();
   return Number.isFinite(timestamp) ? timestamp : null;
 }
 
 function parseDatabaseTime(value) {
-  if (!value) return new Date();
-  const normalized = String(value).replace(' ', 'T');
-  const date = new Date(/[zZ]|[+-]\d{2}:\d{2}$/.test(normalized) ? normalized : normalized + 'Z');
+  const date = time.parse(value);
   return Number.isFinite(date.getTime()) ? date : new Date();
 }
 
@@ -207,6 +204,36 @@ async function findNearestAvailableDriver(pickupLat, pickupLng, options = {}) {
   return null;
 }
 
+function getDriverAvailabilityMessage(pickupLat, pickupLng, options = {}) {
+  const pickup = normalizeLocation(pickupLat, pickupLng);
+  if (!pickup) return '选择救援位置后自动计算距离';
+  const allowBusy = options.allowBusy === true;
+  const maxDistanceKm = Number.isFinite(Number(options.maxDistanceKm))
+    ? Number(options.maxDistanceKm)
+    : Infinity;
+  const approved = (db.data.drivers || []).filter(isApproved);
+  const online = approved.filter(driver =>
+    driver.status === 'online' || (allowBusy && driver.status === 'busy')
+  );
+  if (!online.length) return '当前没有在线司机';
+
+  const available = online.filter(driver => !driverHasActiveOrder(driver.id, options.exceptOrderId));
+  if (!available.length) return '在线司机正在服务其他订单';
+
+  const located = available.filter(driver => normalizeLocation(driver.lat, driver.lng));
+  if (!located.length) return '在线司机尚未上报当前位置';
+
+  const fresh = located.filter(driver => hasFreshDriverLocation(driver));
+  if (!fresh.length) return '在线司机定位已超过30分钟，请司机打开订单大厅更新定位';
+
+  const inRange = fresh.some(driver => {
+    const distance = haversineKm(driver.lat, driver.lng, pickup.lat, pickup.lng);
+    return distance !== null && distance <= maxDistanceKm;
+  });
+  if (!inRange) return `在线司机均超出${maxDistanceKm}公里调度范围`;
+  return '暂时无法计算司机驾车距离，请稍后重试';
+}
+
 async function calculateDistanceToOrder(order, driver) {
   if (!order || !driver || !hasFreshDriverLocation(driver)) return null;
   return getTencentDrivingRoute(
@@ -221,7 +248,7 @@ async function calculateDistanceToOrder(order, driver) {
 async function applyAssignedDriverPricing(order, driver) {
   const route = await calculateDistanceToOrder(order, driver);
   if (!route) {
-    return { ok: false, message: '司机定位无效或已超过15分钟，请司机重新上报当前位置后再接单' };
+    return { ok: false, message: '司机定位无效或已超过30分钟，请司机重新上报当前位置后再接单' };
   }
   const result = calculatePrice(
     order.vehicle_type,
@@ -255,6 +282,7 @@ module.exports = {
   getTencentDrivingRoute,
   hasFreshDriverLocation,
   findNearestAvailableDriver,
+  getDriverAvailabilityMessage,
   calculateDistanceToOrder,
   applyAssignedDriverPricing
 };

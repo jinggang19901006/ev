@@ -113,7 +113,17 @@ module.exports = function(authMiddleware, upload) {
       return res.json({ code: 1, message: error.message || '腾讯地图路线计算失败' });
     }
     if (!nearest) {
-      return res.json({ code: 1, message: '当前调度范围内没有已定位的在线司机，请稍后再试' });
+      return res.json({
+        code: 1,
+        message: locationPricing.getDriverAvailabilityMessage(
+          pickupLocation.lat,
+          pickupLocation.lng,
+          {
+            maxDistanceKm: settings.maxDistanceKm,
+            allowBusy: settings.allowBusy
+          }
+        )
+      });
     }
     const distanceKm = nearest.distanceKm;
     const safeExtraFee = Math.max(0, Math.min(10000, Number(extraFee) || 0));
@@ -234,7 +244,14 @@ module.exports = function(authMiddleware, upload) {
         route_request_id: nearest ? nearest.requestId : '',
         distance_message: nearest
           ? '腾讯地图驾车路线预估，最终以实际指派司机重新算路为准'
-          : (pickupLocation ? '当前没有已定位的在线司机' : '选择救援位置后自动计算距离'),
+          : locationPricing.getDriverAvailabilityMessage(
+            pickupLocation && pickupLocation.lat,
+            pickupLocation && pickupLocation.lng,
+            {
+              maxDistanceKm: settings.maxDistanceKm,
+              allowBusy: settings.allowBusy
+            }
+          ),
         base_distance_km: Number(price.baseDistance || 0),
         extra_per_km: Number(price.extraPerKm || 0),
         vehicle_type: price.vehicleType || vehicleType,

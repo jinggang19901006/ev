@@ -4,6 +4,7 @@
  *  - driver 角色：司机中心（接单状态切换/今日·本月·累计收入/订单大厅入口/身份切换）
  */
 const api = require('../../utils/api.js')
+const time = require('../../utils/time.js')
 const app = getApp()
 
 Page({
@@ -256,8 +257,7 @@ Page({
   },
 
   formatWalletTime(value) {
-    if (!value) return ''
-    return String(value).replace('T', ' ').substring(0, 16)
+    return time.formatDateTime(value)
   },
 
   onOpenWithdraw() {

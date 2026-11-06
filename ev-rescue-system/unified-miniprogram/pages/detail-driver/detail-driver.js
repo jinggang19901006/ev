@@ -1,5 +1,6 @@
 // pages/detail-driver/detail-driver.js - 司机订单详情页（适配 unified API）
 const api = require('../../utils/api.js');
+const time = require('../../utils/time.js');
 const app = getApp();
 
 Page({
@@ -146,37 +147,7 @@ Page({
   },
 
   formatTime(timeStr) {
-    if (!timeStr) return '';
-    try {
-      // iOS 只支持 yyyy/MM/dd HH:mm:ss / yyyy-MM-dd / yyyy-MM-ddTHH:mm:ss 等标准格式，
-      // 后端返回 "2026-08-28 10:53:26" 这种 中间空格+短横线 在 iOS 上是 Invalid Date。
-      // 先做正则 normalize：替换短横线为 /；把 T 分隔符转空格；去毫秒和 Z；最后 new Date()
-      let s = String(timeStr)
-        .replace(/\.\d+/, '')
-        .replace(/Z$/i, '')
-        .replace(/T(\d)/i, ' $1')
-        .replace(/-/g, '/');
-      let date = new Date(s);
-      if (isNaN(date.getTime())) {
-        // 最终兜底：手动拆 yyyy/MM/dd HH:mm:ss
-        const m = /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/.exec(String(timeStr));
-        if (m) {
-          date = new Date(
-            parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10),
-            parseInt(m[4] || 0, 10), parseInt(m[5] || 0, 10), parseInt(m[6] || 0, 10)
-          );
-        } else {
-          return '';
-        }
-      }
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return month + '月' + day + '日 ' + hours + ':' + minutes;
-    } catch (e) {
-      return '';
-    }
+    return time.formatMonthDayTime(timeStr);
   },
 
   updateStepIndex() {

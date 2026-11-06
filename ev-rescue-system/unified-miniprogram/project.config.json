@@ -45,12 +45,13 @@
   },
   "compileType": "miniprogram",
   "libVersion": "3.5.0",
-  "appid": "wx3cc87aa49fdb6581",
+  "appid": "wx14c7598822764491",
   "projectname": "ev-unified-miniprogram",
   "condition": {},
   "editorSetting": {
     "tabIndent": "insertSpaces",
     "tabSize": 2
   },
-  "simulatorPluginLibVersion": {}
+  "simulatorPluginLibVersion": {},
+  "isGameTourist": false
 }

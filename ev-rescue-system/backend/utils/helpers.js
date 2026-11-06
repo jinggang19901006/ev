@@ -9,6 +9,7 @@
 
 const crypto = require('crypto');
 const db = require('../db');
+const time = require('./time');
 
 // ===========================================================
 // 1. 信用积分
@@ -63,21 +64,6 @@ function canUserPlaceOrder(userId) {
 /**
  * 生成6位短信验证码并保存，dev模式返回固定1234且5分钟过期
  */
-// helpers: 本地时区时间工具（避免 UTC↔local 解析错位导致的"验证码已过期"）
-function _localStr(date = new Date()) {
-  const pad = n => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-}
-// 解析 rescue.json 中 YYYY-MM-DD HH:mm:ss 格式（本地时区）为 Date
-function _parseLocal(str) {
-  if (!str) return new Date(NaN);
-  // 兼容：若带 Z/T 就按原生解析；否则用本地语义
-  if (/Z$/i.test(String(str)) || /T/.test(String(str))) return new Date(str);
-  const m = String(str).match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
-  if (!m) return new Date(str);
-  return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6]||0));
-}
-
 function sendSmsCaptcha(phone, scene = 'login') {
   if (!/^1[3-9]\d{9}$/.test(phone)) return { ok: false, message: '手机号格式不正确' };
   const mode = db.getConfig('sms_mode', 'dev');
@@ -86,7 +72,7 @@ function sendSmsCaptcha(phone, scene = 'login') {
   db.data.sms_captchas = (db.data.sms_captchas || []).filter(
     c => !(c.phone === phone && c.scene === scene)
   );
-  const expiredAt = _localStr(new Date(Date.now() + 5 * 60 * 1000));
+  const expiredAt = time.after(5 * 60 * 1000);
   db.data.sms_captchas.push({
     id: db.nextId('sms_captchas'),
     phone, scene, code, expired_at: expiredAt,
@@ -113,7 +99,7 @@ function verifySmsCaptcha(phone, code, scene = 'login') {
   if (!list.length) return { ok: false, message: '请先获取验证码' };
   const captcha = list.sort((a, b) => b.id - a.id)[0];
   if (captcha.used) return { ok: false, message: '验证码已使用' };
-  if (_parseLocal(captcha.expired_at).getTime() < Date.now()) return { ok: false, message: '验证码已过期' };
+  if (time.parse(captcha.expired_at).getTime() < Date.now()) return { ok: false, message: '验证码已过期' };
   if (captcha.code !== String(code)) return { ok: false, message: '验证码错误' };
   captcha.used = 1;
   captcha.used_at = db.now();
@@ -160,7 +146,7 @@ function canUseCard(card, order, userId) {
   if ((card.used_count || 0) >= (card.total_uses || 1)) return { ok: false, reason: '服务卡已用完' };
   if (card.vehicle_type && card.vehicle_type !== '*' && card.vehicle_type !== order.vehicle_type) return { ok: false, reason: '服务卡车型与当前订单不符' };
   // 过期时间（本地时区安全解析）
-  if (card.expired_at && _parseLocal(card.expired_at).getTime() < Date.now()) return { ok: false, reason: '服务卡已过期' };
+  if (card.expired_at && time.parse(card.expired_at).getTime() < Date.now()) return { ok: false, reason: '服务卡已过期' };
   return { ok: true };
 }
 
@@ -243,5 +229,5 @@ module.exports = {
   wxCode2Session,
   canUseCard, redeemCard, allocateCardToUser,
   calcDeposit,
-  nowStr: _localStr, formatLocalStr: _localStr, parseLocalStr: _parseLocal
+  nowStr: time.format, formatLocalStr: time.format, parseLocalStr: time.parse
 };

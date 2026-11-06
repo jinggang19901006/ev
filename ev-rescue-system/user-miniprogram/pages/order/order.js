@@ -3,6 +3,7 @@
  * 选车型、填地址、电量、仪表盘是否不亮、价格预估、确认下单
  */
 const api = require('../../utils/api.js')
+const time = require('../../utils/time.js')
 const app = getApp()
 
 Page({
@@ -52,7 +53,7 @@ Page({
    * 判断是否夜间时段
    */
   checkNightTime() {
-    const hour = new Date().getHours()
+    const hour = time.getBeijingHour()
     const isNight = hour >= 22 || hour < 6
     this.setData({ isNight })
 

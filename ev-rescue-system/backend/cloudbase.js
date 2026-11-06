@@ -1,4 +1,5 @@
 const path = require('path');
+const time = require('./utils/time');
 
 const ENV_ID = process.env.CLOUDBASE_ENV_ID || '';
 const STATE_COLLECTION = process.env.CLOUDBASE_STATE_COLLECTION || 'ev_rescue_state';
@@ -55,7 +56,8 @@ async function getMySQLPool() {
       port: Number(port) || 3306,
       user: process.env.MYSQL_USERNAME,
       password: process.env.MYSQL_PASSWORD,
-      enableKeepAlive: true
+      enableKeepAlive: true,
+      timezone: '+08:00'
     };
     const bootstrapConnection = await mysql.createConnection(connectionOptions);
     try {
@@ -115,8 +117,9 @@ async function saveState(payload) {
     const pool = await getMySQLPool();
     await pool.execute(
       `INSERT INTO ev_rescue_state (state_key, payload, updated_at)
-       VALUES (?, ?, NOW())
-       ON DUPLICATE KEY UPDATE payload = VALUES(payload), updated_at = NOW()`,
+       VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR))
+       ON DUPLICATE KEY UPDATE payload = VALUES(payload),
+         updated_at = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 8 HOUR)`,
       [STATE_DOCUMENT, JSON.stringify(payload)]
     );
     return;
@@ -129,7 +132,7 @@ async function saveState(payload) {
     .set({
       data: {
         payload,
-        updated_at: new Date().toISOString()
+        updated_at: time.nowISO()
       }
     });
 }
@@ -139,7 +142,7 @@ async function uploadBuffer(buffer, originalName) {
   const cloudPath = [
     'ev-rescue',
     'order-photos',
-    new Date().toISOString().slice(0, 10),
+    time.dateKey(),
     `${Date.now()}-${Math.random().toString(36).slice(2, 11)}${ext}`
   ].join('/');
   const result = await getApp().uploadFile({

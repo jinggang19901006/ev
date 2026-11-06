@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 // 导入数据库（会自动初始化）
 const db = require('./db');
 const cloudbase = require('./cloudbase');
+const time = require('./utils/time');
 
 const app = express();
 const PORT = process.env.PORT || 3108;
@@ -177,7 +178,7 @@ app.use('/', require('express').static(require('path').join(__dirname, '../admin
 
 // 健康检查
 app.get('/api/health', (req, res) => {
-  res.json({ code: 0, message: 'ok', data: { status: 'running', time: new Date().toISOString() } });
+  res.json({ code: 0, message: 'ok', data: { status: 'running', time: time.nowISO(), timezone: 'Asia/Shanghai' } });
 });
 
 // 错误处理

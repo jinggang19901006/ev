@@ -1,5 +1,6 @@
 // pages/wallet/wallet.js - 钱包提现页
 const api = require('../../utils/api.js');
+const time = require('../../utils/time.js');
 const app = getApp();
 
 Page({
@@ -107,16 +108,6 @@ Page({
   },
 
   formatTime(timeStr) {
-    if (!timeStr) return '';
-    try {
-      const date = new Date(timeStr);
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return month + '月' + day + '日 ' + hours + ':' + minutes;
-    } catch (e) {
-      return '';
-    }
+    return time.formatMonthDayTime(timeStr);
   }
 });

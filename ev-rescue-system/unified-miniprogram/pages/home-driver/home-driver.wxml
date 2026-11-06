@@ -31,6 +31,16 @@
     <text wx:if="{{driverStatus === 'online' && orders.length > 0}}" class="order-count">{{orders.length}}个待接单</text>
   </view>
 
+  <view
+    wx:if="{{driverStatus === 'online' && locationState !== 'ready' && locationState !== 'unknown'}}"
+    class="location-alert {{locationState}}"
+    bindtap="onRetryLocation"
+  >
+    <view class="location-alert-icon">{{locationUpdating ? '···' : '!'}}</view>
+    <text class="location-alert-text">{{locationMessage || '定位需要更新'}}</text>
+    <text class="location-alert-action">{{locationUpdating ? '更新中' : '重试 ›'}}</text>
+  </view>
+
   <!-- 内容区域 -->
   <scroll-view scroll-y class="orders-scroll" enhanced show-scrollbar="{{false}}">
 
@@ -88,7 +98,7 @@
           <view class="radar-signal signal-one"></view>
           <view class="radar-signal signal-two"></view>
           <view class="radar-core">
-            <view class="radar-bolt"></view>
+            <text class="radar-bolt">⚡</text>
           </view>
         </view>
         <view class="listening-title-row">

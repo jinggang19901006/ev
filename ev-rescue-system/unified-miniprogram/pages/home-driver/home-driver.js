@@ -1,5 +1,6 @@
 // pages/home-driver/home-driver.js - 司机订单大厅（统一端适配版）
 const api = require('../../utils/api.js');
+const time = require('../../utils/time.js');
 const app = getApp();
 
 Page({
@@ -16,7 +17,10 @@ Page({
     notApproved: false,
     acceptingId: '',
     confirmingId: '',
-    activeOrder: null
+    activeOrder: null,
+    locationState: 'unknown',
+    locationMessage: '',
+    locationUpdating: false
   },
 
   refreshTimer: null,
@@ -96,11 +100,7 @@ Page({
       if (serverStatus === 'online') {
         const locationReady = await this.reportCurrentLocation(false);
         if (!locationReady) {
-          try { await api.driver.updateStatus('offline'); } catch (e) {}
-          this.setData({ driverStatus: 'offline', orders: [] });
-          this.updateAppStatus('offline');
-          wx.showToast({ title: '定位失败，已自动下线', icon: 'none' });
-          return;
+          wx.showToast({ title: '定位刷新失败，仍保持在线', icon: 'none' });
         }
         this.loadOrders();
         this.startAutoRefresh();
@@ -227,37 +227,7 @@ Page({
   },
 
   formatTime(timeStr) {
-    if (!timeStr) return '';
-    try {
-      // iOS 兼容：后端 "2026-08-28 10:53:26" 中间空格+短横线 iOS Invalid → 正则 normalize
-      let s = String(timeStr)
-        .replace(/\.\d+/, '')
-        .replace(/Z$/i, '')
-        .replace(/T(\d)/i, ' $1')
-        .replace(/-/g, '/');
-      let date = new Date(s);
-      if (isNaN(date.getTime())) {
-        const m = /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/.exec(String(timeStr));
-        if (m) {
-          date = new Date(
-            parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10),
-            parseInt(m[4] || 0, 10), parseInt(m[5] || 0, 10), parseInt(m[6] || 0, 10)
-          );
-        } else {
-          return '';
-        }
-      }
-      const now = new Date();
-      const diff = now - date;
-      if (diff < 60000) return '刚刚';
-      if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
-      if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return month + '月' + day + '日 ' + hours + ':' + minutes;
-    } catch (e) { return ''; }
+    return time.formatRelative(timeStr);
   },
 
   startAutoRefresh() {
@@ -304,6 +274,12 @@ Page({
   },
 
   async reportCurrentLocation(showError = true) {
+    if (this.data.locationUpdating) return this.data.locationState === 'ready';
+    this.setData({
+      locationUpdating: true,
+      locationState: 'locating',
+      locationMessage: '正在更新当前位置'
+    });
     try {
       const location = await this.getCurrentLocation();
       await api.driver.updateLocation({
@@ -311,14 +287,67 @@ Page({
         longitude: location.longitude,
         accuracy: location.accuracy
       });
+      this.setData({
+        locationState: 'ready',
+        locationMessage: ''
+      });
       return true;
     } catch (error) {
       console.error('report location fail', error);
+      const message = this.getLocationErrorMessage(error);
+      this.setData({
+        locationState: message.state,
+        locationMessage: message.text
+      });
       if (showError) {
-        wx.showToast({ title: '请授权定位后再上线', icon: 'none' });
+        wx.showToast({ title: message.text, icon: 'none' });
       }
       return false;
+    } finally {
+      this.setData({ locationUpdating: false });
     }
+  },
+
+  getLocationErrorMessage(error) {
+    const detail = String((error && (error.errMsg || error.message)) || '').toLowerCase();
+    if (/auth deny|authorize:fail|permission|unauthorized|scope\.userlocation/.test(detail)) {
+      return { state: 'denied', text: '定位权限未开启，点击此处授权' };
+    }
+    if (/system permission|location service|gps|定位服务/.test(detail)) {
+      return { state: 'disabled', text: '手机定位服务未开启，请开启后重试' };
+    }
+    if (/timeout|network|request:fail/.test(detail)) {
+      return { state: 'unavailable', text: '定位更新失败，请检查网络后重试' };
+    }
+    return { state: 'unavailable', text: '暂时无法获取定位，点击重试' };
+  },
+
+  getLocationSetting() {
+    return new Promise(resolve => {
+      wx.getSetting({
+        success: resolve,
+        fail: () => resolve({ authSetting: {} })
+      });
+    });
+  },
+
+  openLocationSetting() {
+    return new Promise(resolve => {
+      wx.openSetting({
+        success: resolve,
+        fail: () => resolve(null)
+      });
+    });
+  },
+
+  async onRetryLocation() {
+    if (this.data.locationUpdating) return;
+    const setting = await this.getLocationSetting();
+    if (setting && setting.authSetting && setting.authSetting['scope.userLocation'] === false) {
+      await this.openLocationSetting();
+    }
+    const ready = await this.reportCurrentLocation(true);
+    if (ready) wx.showToast({ title: '定位已更新', icon: 'success' });
   },
 
   updateAppStatus(s) {
@@ -348,7 +377,11 @@ Page({
         wx.showToast({ title: '已下线', icon: 'none' });
         this.stopAutoRefresh();
         this.stopLocationRefresh();
-        this.setData({ orders: [] });
+        this.setData({
+          orders: [],
+          locationState: 'unknown',
+          locationMessage: ''
+        });
       }
     } catch (err) {
       console.error('toggle status fail', err);

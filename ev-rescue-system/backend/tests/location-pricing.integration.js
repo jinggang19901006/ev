@@ -82,6 +82,37 @@ async function run() {
   const driverHeaders = {
     Authorization: `Bearer ${jwt.sign({ id: 1, role: 'driver' }, 'ev-rescue-secret-2024')}`
   };
+  const testDriver = db.data.drivers[0];
+  assert.strictEqual(
+    locationPricing.getDriverAvailabilityMessage(31.55, 104.74),
+    '当前没有在线司机'
+  );
+  testDriver.status = 'online';
+  assert.strictEqual(
+    locationPricing.getDriverAvailabilityMessage(31.55, 104.74),
+    '在线司机尚未上报当前位置'
+  );
+  testDriver.lat = 31.47;
+  testDriver.lng = 104.74;
+  testDriver.location_updated_at = '2020-01-01 00:00:00';
+  assert.strictEqual(
+    locationPricing.getDriverAvailabilityMessage(31.55, 104.74),
+    '在线司机定位已超过30分钟，请司机打开订单大厅更新定位'
+  );
+  assert.strictEqual(locationPricing.hasFreshDriverLocation({
+    lat: 31.47,
+    lng: 104.74,
+    location_updated_at: new Date(Date.now() - 20 * 60 * 1000).toISOString()
+  }), true);
+  assert.strictEqual(locationPricing.hasFreshDriverLocation({
+    lat: 31.47,
+    lng: 104.74,
+    location_updated_at: new Date(Date.now() - 31 * 60 * 1000).toISOString()
+  }), false);
+  testDriver.status = 'offline';
+  testDriver.lat = null;
+  testDriver.lng = null;
+  testDriver.location_updated_at = null;
 
   const onlineWithoutLocation = await request('/driver/status', {
     method: 'POST',
@@ -167,6 +198,8 @@ async function run() {
 
   console.log(JSON.stringify({
     locationRequiredBeforeOnline: 'passed',
+    locationAvailabilityDiagnostics: 'passed',
+    locationFreshnessWindow: '30 minutes',
     clientDistanceIgnored: 'passed',
     calculatedDistanceKm: expectedDistance,
     excessDistancePricing: 'passed',

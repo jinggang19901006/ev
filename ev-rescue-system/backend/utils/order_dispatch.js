@@ -6,6 +6,7 @@
  */
 const db = require('../db');
 const locationPricing = require('./location_pricing');
+const time = require('./time');
 
 const ACTIVE_ORDER_STATUSES = ['accepted', 'dispatched', 'arrived', 'charging'];
 const DISPATCH_CONFIG_KEYS = [
@@ -146,7 +147,7 @@ function getAcceptCount7d(driverId) {
   const since = Date.now() - 7 * 24 * 60 * 60 * 1000;
   return (db.data.orders || []).filter(order => {
     if (Number(order.driver_id) !== Number(driverId) || order.status === 'cancelled') return false;
-    const acceptedAt = new Date(order.assigned_at || order.start_time || order.created_at || 0).getTime();
+    const acceptedAt = time.parse(order.assigned_at || order.start_time || order.created_at || 0).getTime();
     return Number.isFinite(acceptedAt) && acceptedAt >= since;
   }).length;
 }

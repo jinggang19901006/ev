@@ -3,6 +3,7 @@ const db = require('../db');
 const dispatch = require('../utils/order_dispatch');
 const settlement = require('../utils/order_settlement');
 const locationPricing = require('../utils/location_pricing');
+const time = require('../utils/time');
 
 module.exports = function(jwt, JWT_SECRET, authMiddleware) {
   const router = express.Router();
@@ -186,7 +187,7 @@ module.exports = function(jwt, JWT_SECRET, authMiddleware) {
       return res.json({ code: 1, message: error.message || '腾讯地图路线计算失败' });
     }
     if (!pricingResult.ok) return res.json({ code: 1, message: pricingResult.message });
-    const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const now = time.now();
     db.prepare('UPDATE orders SET driver_id = ?, status = ?, start_time = ? WHERE id = ?')
       .run(req.user.id, 'accepted', now, orderId);
     db.prepare('UPDATE drivers SET status = ? WHERE id = ?').run('busy', req.user.id);
@@ -332,8 +333,8 @@ module.exports = function(jwt, JWT_SECRET, authMiddleware) {
 
   // 司机收入统计
   router.get('/earnings', authMiddleware, (req, res) => {
-    const today = new Date().toISOString().substring(0, 10);
-    const thisMonth = today.substring(0, 7);
+    const today = time.dateKey();
+    const thisMonth = time.monthKey();
     const settledOrders = (db.data.orders || []).filter(order =>
       Number(order.driver_id) === Number(req.user.id) &&
       order.status === 'completed' &&

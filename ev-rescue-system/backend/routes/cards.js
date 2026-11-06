@@ -6,6 +6,7 @@
  *                               DELETE /admin/:id, GET /admin/usages, GET /admin/allocations
  */
 const helpers = require('../utils/helpers');
+const time = require('../utils/time');
 
 module.exports = function (authMiddleware, adminAuthMiddleware) {
   const router = require('express').Router();
@@ -29,7 +30,7 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
     // 过期判定（本地时区安全解析，仅用于展示/筛选）
     let isExpired = false;
     if (c.expired_at) {
-      const t = Date.parse(String(c.expired_at).replace(/-/g, '/'));
+      const t = time.parse(c.expired_at).getTime();
       if (!isNaN(t) && t < Date.now()) isExpired = true;
     }
     let displayStatus = c.status;
@@ -181,9 +182,7 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
     if (!expired_at && body.valid_days != null) {
       const days = Math.max(1, Number(body.valid_days) || 0);
       if (days > 0) {
-        const d = new Date(Date.now() + days * 86400 * 1000);
-        const pad = n => String(n).padStart(2, '0');
-        expired_at = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        expired_at = time.after(days * 86400 * 1000);
       }
     }
     // name → 附加到 remark 最前

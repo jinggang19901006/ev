@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const cloudbase = require('./cloudbase');
+const time = require('./utils/time');
 
 const DB_FILE = process.env.RESCUE_DB_FILE || path.join(__dirname, 'rescue.json');
 
@@ -112,6 +113,26 @@ class JSONDatabase {
   }
 
   initDefaults() {
+    // 旧版本将 UTC 时间去掉时区标记后写入 JSON。首次加载时统一补为北京时间。
+    if (!this.counters.__beijing_time_v1) {
+      const utcNaiveFields = new Set([
+        'allocated_at', 'arrive_time', 'assigned_at', 'charging_end_time',
+        'charging_start_time', 'complete_time', 'created_at', 'dispatch_time',
+        'distance_calculated_at', 'escape_at', 'last_login_at', 'last_order_at',
+        'location_updated_at', 'paid_at', 'processed_at', 'refund_at',
+        'settled_at', 'start_time', 'updated_at', 'used_at', 'user_confirmed_at'
+      ]);
+      for (const rows of Object.values(this.data)) {
+        if (!Array.isArray(rows)) continue;
+        for (const row of rows) {
+          for (const field of utcNaiveFields) {
+            if (row[field]) row[field] = time.shiftUtcNaiveToBeijing(row[field]);
+          }
+        }
+      }
+      this.counters.__beijing_time_v1 = 1;
+    }
+
     // 1. 定价配置种子
     if (this.data.pricing_config.length === 0) {
       // 定价统一：基础里程 5km 内一口价，超出按 km 加收（与 pricing.js calculatePrice FALLBACK 完全对齐）
@@ -227,12 +248,7 @@ class JSONDatabase {
         if (d.location_updated_at === undefined) { d.location_updated_at = null; schemaModified = true; }
         if (d.location_accuracy === undefined) { d.location_accuracy = null; schemaModified = true; }
         if (d.status === 'online') {
-          const locationText = d.location_updated_at
-            ? String(d.location_updated_at).replace(' ', 'T')
-            : '';
-          const locationTime = locationText
-            ? new Date(/[zZ]|[+-]\d{2}:\d{2}$/.test(locationText) ? locationText : locationText + 'Z').getTime()
-            : NaN;
+          const locationTime = time.parse(d.location_updated_at).getTime();
           if (!Number.isFinite(locationTime) || Date.now() - locationTime > 15 * 60 * 1000) {
             d.status = 'offline';
             schemaModified = true;
@@ -358,7 +374,7 @@ class JSONDatabase {
   }
 
   now() {
-    return new Date().toISOString().replace('T', ' ').substring(0, 19);
+    return time.now();
   }
 
   // SQL兼容层：解析简单SQL并执行

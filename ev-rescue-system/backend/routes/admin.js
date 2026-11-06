@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const dispatch = require('../utils/order_dispatch');
+const time = require('../utils/time');
 
 const CONFIG_NUMBER_RANGES = {
   commission_rate: [0, 1],
@@ -65,8 +66,8 @@ module.exports = function(jwt, JWT_SECRET, adminAuthMiddleware, upload) {
 
   // 数据看板
   router.get('/dashboard', adminAuthMiddleware, (req, res) => {
-    const today = new Date().toISOString().substring(0, 10);
-    const thisMonth = today.substring(0, 7);
+    const today = time.dateKey();
+    const thisMonth = time.monthKey();
     const commissionRate = parseFloat(db.getConfig('commission_rate', '0.2'));
 
     const todayStats = db.prepare(`

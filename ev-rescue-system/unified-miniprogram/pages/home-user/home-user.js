@@ -3,6 +3,7 @@
  * 1:1 回退老 user-miniprogram/pages/home/home.js，仅替换 API 调用和导航路径
  */
 const api = require('../../utils/api.js')
+const time = require('../../utils/time.js')
 const app = getApp()
 
 Page({
@@ -36,7 +37,7 @@ Page({
    * 判断是否夜间时段 (22:00 - 次日06:00)
    */
   checkNightTime() {
-    const hour = new Date().getHours()
+    const hour = time.getBeijingHour()
     this.setData({ isNight: hour >= 22 || hour < 6 })
   },
 

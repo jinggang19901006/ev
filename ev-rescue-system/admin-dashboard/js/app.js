@@ -105,16 +105,38 @@
     return n.toLocaleString('zh-CN');
   }
 
+  const BEIJING_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+  function parseBeijingDate(value) {
+    if (value instanceof Date) return new Date(value.getTime());
+    if (typeof value === 'number') return new Date(value);
+    const text = String(value || '').trim();
+    const match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
+    if (match && !/(?:Z|[+-]\d{2}:?\d{2})$/i.test(text)) {
+      return new Date(Date.UTC(
+        Number(match[1]), Number(match[2]) - 1, Number(match[3]),
+        Number(match[4]), Number(match[5]), Number(match[6] || 0)
+      ) - BEIJING_OFFSET_MS);
+    }
+    const dateMatch = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (dateMatch) {
+      return new Date(Date.UTC(
+        Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3])
+      ) - BEIJING_OFFSET_MS);
+    }
+    return new Date(text);
+  }
+
   function formatDate(dateStr) {
     if (!dateStr) return '-';
-    const normalized = typeof dateStr === 'string' ? dateStr.replace(' ', 'T') : dateStr;
-    const d = new Date(normalized);
+    const d = parseBeijingDate(dateStr);
     if (isNaN(d.getTime())) return String(dateStr);
-    const Y = d.getFullYear();
-    const M = String(d.getMonth() + 1).padStart(2, '0');
-    const D = String(d.getDate()).padStart(2, '0');
-    const h = String(d.getHours()).padStart(2, '0');
-    const m = String(d.getMinutes()).padStart(2, '0');
+    const shifted = new Date(d.getTime() + BEIJING_OFFSET_MS);
+    const Y = shifted.getUTCFullYear();
+    const M = String(shifted.getUTCMonth() + 1).padStart(2, '0');
+    const D = String(shifted.getUTCDate()).padStart(2, '0');
+    const h = String(shifted.getUTCHours()).padStart(2, '0');
+    const m = String(shifted.getUTCMinutes()).padStart(2, '0');
     return `${Y}-${M}-${D} ${h}:${m}`;
   }
 
@@ -347,11 +369,7 @@
       </div>`;
 
     // 日期显示
-    const now = new Date();
-    const dateStr = now.getFullYear() + '-' +
-      String(now.getMonth() + 1).padStart(2, '0') + '-' +
-      String(now.getDate()).padStart(2, '0');
-    $('#dashboardDate').textContent = '数据更新时间：' + formatDate(now);
+    $('#dashboardDate').textContent = '数据更新时间：' + formatDate(new Date()) + '（北京时间）';
 
     try {
       const data = await API.getDashboard();

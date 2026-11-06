@@ -19,6 +19,7 @@ const helpers = require('../utils/helpers');
 const crypto = require('crypto');
 const dispatch = require('../utils/order_dispatch');
 const settlement = require('../utils/order_settlement');
+const time = require('../utils/time');
 
 module.exports = function (authMiddleware, adminAuthMiddleware) {
   const router = require('express').Router();
@@ -380,7 +381,7 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
         // 按时支付奖励：完成后24h内支付加信用积分
         if (order.complete_time) {
           const ct = order.complete_time || '';
-          const ctMs = (helpers.parseLocalStr ? helpers.parseLocalStr(ct) : new Date(ct.replace(' ', 'T'))).getTime();
+          const ctMs = time.parse(ct).getTime();
           const h = ctMs ? (Date.now() - ctMs) / 3600000 : 0;
           const timeout = Number(db.getConfig('unpaid_pay_timeout_hours', '24'));
           const bonus = Number(db.getConfig('pay_on_time_bonus_score', '2'));
@@ -470,7 +471,7 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
     );
     let escapeCount = 0;
     for (const o of completed) {
-      const h = (Date.now() - new Date(o.complete_time.replace(' ', 'T')).getTime()) / 3600000;
+      const h = (Date.now() - time.parse(o.complete_time).getTime()) / 3600000;
       if (h >= timeout && o.escape_flagged !== 1) {
         o.escape_flagged = 1;
         o.escape_at = db.now();

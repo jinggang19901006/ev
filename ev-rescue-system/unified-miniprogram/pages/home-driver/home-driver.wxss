@@ -1,6 +1,10 @@
 /* pages/home-driver/home-driver.wxss (1:1 老 driver orders.wxss) */
 .orders-page {
+  width: 100%;
+  height: 100vh;
   min-height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
   background: #0a1628;
   display: flex;
   flex-direction: column;
@@ -159,10 +163,67 @@
   border-radius: 16rpx;
 }
 
+.location-alert {
+  min-height: 72rpx;
+  padding: 12rpx 28rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  background: rgba(245, 158, 11, 0.12);
+  border-bottom: 1rpx solid rgba(245, 158, 11, 0.28);
+}
+
+.location-alert.locating {
+  background: rgba(56, 189, 248, 0.1);
+  border-bottom-color: rgba(56, 189, 248, 0.24);
+}
+
+.location-alert-icon {
+  width: 34rpx;
+  height: 34rpx;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0a1628;
+  background: #f59e0b;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.location-alert.locating .location-alert-icon {
+  color: #082f49;
+  background: #38bdf8;
+}
+
+.location-alert-text {
+  min-width: 0;
+  flex: 1;
+  color: #fbbf24;
+  font-size: 23rpx;
+  line-height: 1.4;
+}
+
+.location-alert.locating .location-alert-text {
+  color: #7dd3fc;
+}
+
+.location-alert-action {
+  flex-shrink: 0;
+  color: #f8fafc;
+  font-size: 23rpx;
+  font-weight: 600;
+}
+
 /* ===== 滚动区域 ===== */
 .orders-scroll {
   flex: 1;
+  min-height: 0;
   height: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ===== 离线/忙碌状态 ===== */
@@ -656,6 +717,9 @@
   bottom: 8rpx;
   left: 8rpx;
   border-radius: 50%;
+  box-sizing: border-box;
+  border-top: 3rpx solid rgba(34, 197, 94, 0.5);
+  border-right: 3rpx solid rgba(34, 197, 94, 0.14);
   background: conic-gradient(from 0deg, transparent 0deg, transparent 292deg, rgba(34, 197, 94, 0.04) 315deg, rgba(34, 197, 94, 0.42) 360deg);
   animation: radarSweep 2.4s linear infinite;
 }
@@ -697,10 +761,10 @@
 }
 
 .radar-bolt {
-  width: 30rpx;
-  height: 40rpx;
-  background: #22c55e;
-  clip-path: polygon(58% 0, 4% 57%, 40% 57%, 28% 100%, 96% 38%, 58% 38%);
+  color: #22c55e;
+  font-size: 42rpx;
+  line-height: 1;
+  text-shadow: 0 0 14rpx rgba(34, 197, 94, 0.75);
 }
 
 @keyframes radarSweep {

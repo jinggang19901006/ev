@@ -1,20 +1,21 @@
 const db = require('../db');
+const time = require('./time');
 
 // 判断是否夜间时段 (22:00 - 次日06:00)
 function isNightTime(date) {
-  const hour = new Date(date).getHours();
+  const hour = time.hour(date);
   return hour >= 22 || hour < 6;
 }
 
 // 生成订单号
 function generateOrderNo() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  const h = String(now.getHours()).padStart(2, '0');
-  const min = String(now.getMinutes()).padStart(2, '0');
-  const s = String(now.getSeconds()).padStart(2, '0');
+  const now = time.parts();
+  const y = now.year;
+  const m = String(now.month).padStart(2, '0');
+  const d = String(now.day).padStart(2, '0');
+  const h = String(now.hour).padStart(2, '0');
+  const min = String(now.minute).padStart(2, '0');
+  const s = String(now.second).padStart(2, '0');
   const rand = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
   return `EV${y}${m}${d}${h}${min}${s}${rand}`;
 }

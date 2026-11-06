@@ -3,6 +3,7 @@
  * 展示服务信息、一键呼叫救援按钮、定价展示
  */
 const api = require('../../utils/api.js')
+const time = require('../../utils/time.js')
 const app = getApp()
 
 Page({
@@ -35,7 +36,7 @@ Page({
    * 判断是否夜间时段 (22:00 - 次日06:00)
    */
   checkNightTime() {
-    const hour = new Date().getHours()
+    const hour = time.getBeijingHour()
     this.setData({ isNight: hour >= 22 || hour < 6 })
   },
 

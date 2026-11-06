@@ -1,5 +1,6 @@
 // pages/mine/mine.js - 个人中心
 const api = require('../../utils/api.js');
+const time = require('../../utils/time.js');
 const app = getApp();
 
 Page({
@@ -213,17 +214,7 @@ Page({
   },
 
   formatTime(timeStr) {
-    if (!timeStr) return '';
-    try {
-      const date = new Date(timeStr);
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return month + '/' + day + ' ' + hours + ':' + minutes;
-    } catch (e) {
-      return '';
-    }
+    return time.formatMonthDayTime(timeStr).replace('月', '/').replace('日', '');
   },
 
   /**
