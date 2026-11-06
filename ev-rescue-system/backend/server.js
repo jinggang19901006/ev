@@ -6,31 +6,38 @@ const multer = require('multer');
 const jwt = require('jsonwebtoken');
 
 // 导入数据库（会自动初始化）
-require('./db');
+const db = require('./db');
+const cloudbase = require('./cloudbase');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const JWT_SECRET = 'ev-rescue-secret-2024';
+const PORT = process.env.PORT || 3108;
+const JWT_SECRET = process.env.JWT_SECRET || 'ev-rescue-secret-2024';
+if (process.env.NODE_ENV === 'production' && JWT_SECRET === 'ev-rescue-secret-2024') {
+  throw new Error('生产环境必须配置 JWT_SECRET');
+}
+app.set('trust proxy', 1);
 
 // 中间件
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '12mb' }));
+app.use(express.urlencoded({ extended: true, limit: '12mb' }));
 
 // 静态文件服务（上传的图片）
-const uploadDir = path.join(__dirname, 'uploads');
+const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
 // 兜底：uploads/ 目录不存在时自动创建（multer.diskStorage destination 在不存在时会 ENOENT → 500）
 try { fs.mkdirSync(uploadDir, { recursive: true }); } catch (e) { /* ignore */ }
 app.use('/uploads', express.static(uploadDir));
 
 // 文件上传配置
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}-${Math.random().toString(36).substr(2, 9)}${ext}`);
-  }
-});
+const storage = cloudbase.isEnabled()
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      cb(null, `${Date.now()}-${Math.random().toString(36).substr(2, 9)}${ext}`);
+    }
+  });
 const upload = multer({ storage, dest: uploadDir });
 
 // JWT验证中间件
@@ -79,36 +86,70 @@ const paymentRoutes = require('./routes/payments')(authMiddleware, adminAuthMidd
 // 智能订单调度路由（独立路由提供推荐+手动指派+权重配置查询）
 const dispatchRoutes = require('express').Router();
 const dispatch = require('./utils/order_dispatch');
-dispatchRoutes.post('/recommend', authMiddleware, (req, res) => {
+dispatchRoutes.post('/recommend', adminAuthMiddleware, async (req, res) => {
   const body = req.body || {};
-  // 兼容多种入参字段：order_id / orderId / id，以及直接传 order 对象
-  const orderId = Number(body.order_id || body.orderId || body.id || (typeof body === 'number' ? body : null));
-  const pickupLat = body.pickup_lat || body.pickupLat || body.lat;
-  if (!orderId && !pickupLat) return res.json({ code: 400, message: '请提供订单id或经纬度/车型' });
-  let orderFull = body;
-  if (orderId) {
-    const o = (require('./db').data.orders || []).find(x => x.id === Number(orderId));
-    if (o) orderFull = Object.assign({}, body, o);
+  const orderId = Number(body.order_id || body.orderId || body.id);
+  const order = (require('./db').data.orders || []).find(item => Number(item.id) === orderId);
+  if (!order) return res.json({ code: 1, message: '订单不存在' });
+  let list;
+  try {
+    list = await dispatch.rankDriversForOrder(order, {
+      manualDriverId: body.manual_driver_id ? Number(body.manual_driver_id) : undefined
+    });
+  } catch (error) {
+    return res.json({ code: 1, message: error.message || '腾讯地图路线计算失败' });
   }
-  const list = dispatch.rankDriversForOrder(orderFull, { manualDriverId: body.manual_driver_id ? Number(body.manual_driver_id) : undefined });
-  // 同时返回 list（后台标准）和 candidates（前端订单推荐）双写
-  res.json({ code: 0, message: 'ok', data: { total: list.length, list, candidates: list, weights: dispatch.readWeights() } });
+  res.json({
+    code: 0,
+    message: 'ok',
+    data: {
+      order,
+      total: list.length,
+      list,
+      candidates: list,
+      settings: dispatch.readSettings(),
+      reason: list.length ? '' : '调度范围内暂无通过审核、在线且无进行中订单的司机'
+    }
+  });
 });
-dispatchRoutes.get('/weights', (req, res) => {
-  // 双写字段：distW/ratingW/levelW/orderW（算法内部用）+ distance/rating/level/order（后台页面用）
-  const w = dispatch.readWeights();
+dispatchRoutes.get('/weights', adminAuthMiddleware, (req, res) => {
+  const settings = dispatch.readSettings();
   res.json({
     code: 0,
     data: {
-      ...w,
-      distance: w.distW,
-      rating: w.ratingW,
-      level: w.levelW,
-      order: w.orderW,
-      max_distance_km: w.maxKm,
-      max_candidates: w.maxCandidates
+      ...settings,
+      distW: settings.distance,
+      ratingW: settings.rating,
+      levelW: settings.level,
+      orderW: settings.order,
+      maxKm: settings.maxDistanceKm,
+      max_distance_km: settings.maxDistanceKm,
+      max_candidates: settings.maxCandidates
     }
   });
+});
+dispatchRoutes.put('/settings', adminAuthMiddleware, (req, res) => {
+  const result = dispatch.saveSettings(req.body || {});
+  if (!result.ok) return res.json({ code: 1, message: result.message });
+  res.json({ code: 0, message: '调度参数已保存并立即生效', data: result.settings });
+});
+dispatchRoutes.get('/queue', adminAuthMiddleware, (req, res) => {
+  const list = dispatch.getPendingOrders();
+  res.json({ code: 0, data: { list, total: list.length } });
+});
+dispatchRoutes.get('/logs', adminAuthMiddleware, (req, res) => {
+  res.json({ code: 0, data: dispatch.getLogs(req.query.limit) });
+});
+dispatchRoutes.post('/run/:orderId', adminAuthMiddleware, async (req, res) => {
+  let result;
+  try {
+    result = await dispatch.dispatchOrder(Number(req.params.orderId));
+  } catch (error) {
+    return res.json({ code: 1, message: error.message || '腾讯地图路线计算失败' });
+  }
+  if (!result.ok && !result.skipped) return res.json({ code: 1, message: result.message, data: result });
+  if (!result.ok) return res.json({ code: 1, message: result.message, data: result });
+  res.json({ code: 0, message: result.message || (result.assigned ? '自动派单完成' : '候选列表已更新'), data: result });
 });
 dispatchRoutes.get('/levels', (req, res) => {
   // 双写字段：min_orders/min_rating（库内字段）+ threshold_orders/threshold_rating（后台页面读）
@@ -145,11 +186,37 @@ app.use((err, req, res, next) => {
   res.status(500).json({ code: 500, message: '服务器内部错误', error: err.message });
 });
 
-// 启动服务
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 救援系统后端服务已启动: http://localhost:${PORT}`);
-  console.log(`📱 API地址: http://localhost:${PORT}/api`);
-  console.log(`🔧 管理员账号: admin / admin123`);
-});
+// 启动服务：云托管先恢复云数据库快照，避免以镜像内旧数据对外提供服务。
+async function start() {
+  await db.ready();
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`救援系统后端服务已启动: http://localhost:${PORT}`);
+    console.log(`API地址: http://localhost:${PORT}/api`);
+    console.log('管理后台已启用，请使用已配置的管理员凭据登录');
+  });
+
+  const shutdown = async signal => {
+    console.log(`收到 ${signal}，正在持久化业务数据`);
+    server.close(async () => {
+      try {
+        await db.flush();
+        process.exit(0);
+      } catch (error) {
+        console.error('关闭前持久化失败:', error.message);
+        process.exit(1);
+      }
+    });
+  };
+  process.once('SIGTERM', () => shutdown('SIGTERM'));
+  process.once('SIGINT', () => shutdown('SIGINT'));
+  return server;
+}
+
+if (require.main === module) {
+  start().catch(error => {
+    console.error('服务启动失败:', error);
+    process.exit(1);
+  });
+}
 
 module.exports = app;

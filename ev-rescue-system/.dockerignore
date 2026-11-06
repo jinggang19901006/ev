@@ -1,0 +1,13 @@
+.git
+.DS_Store
+**/.DS_Store
+**/node_modules
+backend/rescue.json
+backend/uploads
+backend/tests
+deploy/data
+deploy/caddy_data
+deploy/caddy_config
+unified-miniprogram
+user-miniprogram
+driver-miniprogram

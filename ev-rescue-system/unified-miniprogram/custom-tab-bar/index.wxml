@@ -1,5 +1,5 @@
 <!-- custom-tab-bar/index.wxml -->
-<view class="tab-bar">
+<view class="tab-bar {{role}}">
   <view
     class="tab-item {{selected === index ? 'on' : ''}}"
     wx:for="{{list}}"
@@ -7,16 +7,12 @@
     data-path="{{item.pagePath}}"
     data-index="{{index}}"
     bindtap="switchTab"
+    style="color: {{selected === index ? selectedColor : color}};"
   >
-    <image
-      wx:if="{{item.icon}}"
-      class="tab-icon"
-      src="{{selected === index ? item.iconActive : item.icon}}"
-      mode="aspectFit"
-    ></image>
-    <text
-      class="tab-text"
-      style="color: {{selected === index ? selectedColor : color}};"
-    >{{item.text}}</text>
+    <view class="active-indicator"></view>
+    <view class="tab-icon icon-{{item.iconType}}">
+      <view class="icon-shape"></view>
+    </view>
+    <text class="tab-text">{{item.text}}</text>
   </view>
 </view>

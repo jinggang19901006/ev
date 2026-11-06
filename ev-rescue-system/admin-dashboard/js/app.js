@@ -10,6 +10,7 @@
   const STATUS_MAP = {
     pending:   { label: '待接单', class: 'badge-pending' },
     accepted:  { label: '已接单', class: 'badge-accepted' },
+    dispatched:{ label: '前往中', class: 'badge-en_route' },
     en_route:  { label: '前往中', class: 'badge-en_route' },
     arrived:   { label: '已到达', class: 'badge-arrived' },
     charging:  { label: '充电中', class: 'badge-charging' },
@@ -65,9 +66,10 @@
     cards: [],
     // 新增视图状态
     cardsAssign: { tab: 'unallocated', list: [], filter: '', allocations: [], usages: [] },
-    dispatch: { orderId: '', recommend: null, levels: [], weights: null },
+    dispatch: { orderId: '', recommend: null, levels: [], weights: null, queue: [], logs: [] },
     payments: { page: 1, pageSize: 20, total: 0, list: [], filterType: 'all', status: 'all' },
     credit: { users: [], history: {}, selectedUserId: null, adjustForm: { userId: null, delta: '', reason: '' } },
+    withdrawals: { page: 1, pageSize: 50, total: 0, list: [], status: 'all', processingId: null, action: '' },
     currentOrderId: null,
     currentDriver: null,
     currentUserId: null,
@@ -652,7 +654,20 @@
     html += '<div class="detail-list">';
     html += renderDetailItem('救援地址', order.pickup_address || '-', true);
     html += renderDetailItem('补充描述', order.pickup_description || '-', true);
-    html += renderDetailItem('行驶距离', order.distance_km != null ? Number(order.distance_km).toFixed(1) + ' km' : '-');
+    const distanceSourceMap = {
+      nearest_available_driver: '下单时按最近可用司机预估',
+      assigned_driver_location: '按实际指派司机位置计算',
+      tencent_driving_route_estimate: '腾讯地图驾车路线（下单预估）',
+      tencent_driving_route: '腾讯地图驾车路线（实际司机）',
+      legacy_client_value: '历史客户端数据',
+      unavailable: '尚未计算'
+    };
+    html += renderDetailItem('计价距离', order.distance_km != null ? Number(order.distance_km).toFixed(2) + ' km' : '-');
+    html += renderDetailItem('距离依据', distanceSourceMap[order.distance_source] || order.distance_source || '-');
+    html += renderDetailItem('预计驾车时间', order.route_duration_minutes != null ? Number(order.route_duration_minutes) + ' 分钟' : '-');
+    html += renderDetailItem('路线策略', order.route_policy || '-');
+    html += renderDetailItem('腾讯请求ID', order.route_request_id || '-', true, 'table-cell-mono');
+    html += renderDetailItem('计算时间', order.distance_calculated_at ? formatDate(order.distance_calculated_at) : '-');
     html += '</div></div>';
 
     // 费用信息
@@ -1527,6 +1542,48 @@
   /* ============================================================
      系统配置管理
      ============================================================ */
+  const CONFIG_GROUPS = {
+    business: { title: '资金与结算', desc: '影响平台抽佣、司机提现和用户预付金额。' },
+    credit: { title: '信用与防逃单', desc: '影响用户下单资格、逾期判定和信用分变动。' },
+    auth: { title: '短信与微信接入', desc: '开发环境可使用模拟能力，生产环境必须填写真实平台参数。' },
+    map: { title: '地图与路线计价', desc: '订单距离和超距费用依赖腾讯地图真实驾车路线；密钥无效时系统将停止报价和派单。' },
+    dispatch: { title: '订单调度', desc: '影响候选司机筛选和综合排序；建议优先在“订单调度”页面成组修改。' },
+    other: { title: '其他设置', desc: '未分类的系统参数。' }
+  };
+
+  const CONFIG_META = {
+    commission_rate: { group:'business', title:'平台抽佣比例', type:'number', min:0, max:1, step:0.01, unit:'比例', recommended:'0.20', range:'0-1', impact:'数值越大，平台收入越高、司机每单到账越少；0.20 表示平台20%、司机80%。', display:v => `${(Number(v)*100).toFixed(0)}%（司机${(100-Number(v)*100).toFixed(0)}%）` },
+    min_withdraw_amount: { group:'business', title:'最低提现金额', type:'number', min:1, max:100000, step:1, unit:'元', recommended:'10', range:'1-100000元', impact:'数值越大可减少小额打款次数，但司机需要更久才能达到提现门槛。', display:v => `¥${Number(v).toFixed(2)}` },
+    deposit_ratio: { group:'business', title:'下单押金比例', type:'number', min:0, max:1, step:0.05, unit:'比例', recommended:'0.30', range:'0-1', impact:'按订单总额计算押金。数值越大防逃单能力越强，但用户预付压力越高。', display:v => `${(Number(v)*100).toFixed(0)}%` },
+    deposit_min_amount: { group:'business', title:'最低押金金额', type:'number', min:0, max:10000, step:1, unit:'元', recommended:'50', range:'0-10000元', impact:'比例计算结果低于该值时按此金额收取；提高后小额订单的预付金额会增加。', display:v => `¥${Number(v).toFixed(2)}` },
+
+    escape_penalty_score: { group:'credit', title:'逃单扣分', type:'number', min:0, max:100, step:1, unit:'分/次', recommended:'30', range:'0-100分', impact:'数值越大，逾期未支付对用户信用影响越严重。' },
+    bad_rating_penalty_score: { group:'credit', title:'差评扣分', type:'number', min:0, max:100, step:1, unit:'分/次', recommended:'5', range:'0-100分', impact:'用于差评场景的信用扣减；过高可能导致用户因单次评价失去下单资格。' },
+    pay_on_time_bonus_score: { group:'credit', title:'按时支付奖励', type:'number', min:0, max:20, step:1, unit:'分/次', recommended:'2', range:'0-20分', impact:'用户在规定时间内支付尾款时增加信用分；数值越大恢复信用越快。' },
+    credit_min_to_order: { group:'credit', title:'允许下单的最低信用分', type:'number', min:0, max:100, step:1, unit:'分', recommended:'60', range:'0-100分', impact:'信用分低于该值将禁止下单；数值越高，下单审核越严格。' },
+    unpaid_pay_timeout_hours: { group:'credit', title:'尾款逾期时限', type:'number', min:1, max:168, step:1, unit:'小时', recommended:'24', range:'1-168小时', impact:'订单完成后超过该时长仍未付款即判定逃单；数值越小催付越严格。' },
+
+    sms_mode: { group:'auth', title:'短信验证码模式', type:'select', options:[['dev','开发模式（固定1234）'],['prod','生产短信服务']], recommended:'开发用dev，上线用prod', range:'dev / prod', impact:'prod 会调用真实短信服务；未完成短信供应商配置前不要切换到生产模式。' },
+    wx_appid: { group:'auth', title:'微信小程序 AppID', type:'text', maxLength:128, allowEmpty:true, range:'最多128字符', impact:'用于微信登录和支付身份识别；生产环境必填。' },
+    wx_appsecret: { group:'auth', title:'微信小程序 AppSecret', type:'password', maxLength:256, allowEmpty:true, sensitive:true, range:'最多256字符', impact:'用于服务端换取微信凭证。属于敏感信息，不应对外泄露。' },
+    wx_merchant_id: { group:'auth', title:'微信支付商户号', type:'text', maxLength:64, allowEmpty:true, range:'最多64字符', impact:'用于发起真实微信支付；留空时当前开发环境会使用模拟支付。' },
+    wx_pay_key: { group:'auth', title:'微信支付 APIv3 密钥', type:'password', maxLength:256, allowEmpty:true, sensitive:true, range:'最多256字符', impact:'用于支付签名和回调校验。属于敏感信息，修改错误会导致支付失败。' },
+
+    tencent_map_key: { group:'map', title:'腾讯位置服务 WebService Key', type:'password', maxLength:128, allowEmpty:true, sensitive:true, range:'腾讯位置服务控制台签发的服务器Key', impact:'用于服务端调用驾车路线规划。未配置、配额耗尽或权限错误时，系统不会使用估算距离兜底，以防错误计价。' },
+    tencent_map_driving_policy: { group:'map', title:'驾车计价路线策略', type:'select', options:[['SHORT_DISTANCE','距离较短（推荐）'],['LEAST_TIME','时间较短']], recommended:'SHORT_DISTANCE', range:'SHORT_DISTANCE / LEAST_TIME', impact:'距离较短策略不受实时拥堵影响，计价更稳定；时间较短策略可能因路况选择更长路线。' },
+
+    dispatch_enabled: { group:'dispatch', title:'启用自动调度', type:'select', options:[['1','启用'],['0','停用']], recommended:'启用', range:'启用 / 停用', impact:'停用后系统不会自动计算或指派司机，只能由管理员人工处理。' },
+    dispatch_strategy: { group:'dispatch', title:'派单策略', type:'select', options:[['auto_assign','自动指派第一名'],['recommend_only','仅推荐，司机抢单'],['manual','仅管理员人工指派']], recommended:'auto_assign', range:'三种策略', impact:'决定候选排名生成后是否直接占用排名第一的司机。' },
+    dispatch_require_deposit: { group:'dispatch', title:'支付押金后才派单', type:'select', options:[['1','是'],['0','否']], recommended:'是', range:'是 / 否', impact:'关闭后未付押金订单也可派给司机，会提高逃单风险。' },
+    dispatch_allow_busy: { group:'dispatch', title:'允许忙碌司机进入候选', type:'select', options:[['0','否（推荐）'],['1','是']], recommended:'否', range:'是 / 否', impact:'开启可能让同一司机同时承接多单，通常应保持关闭。' },
+    dispatch_distance_weight: { group:'dispatch', title:'距离权重', type:'number', min:0, max:1, step:0.05, unit:'权重', recommended:'0.40', range:'0-1', impact:'越大越优先选择距离救援点近的司机。四项权重建议合计为1。' },
+    dispatch_rating_weight: { group:'dispatch', title:'评分权重', type:'number', min:0, max:1, step:0.05, unit:'权重', recommended:'0.25', range:'0-1', impact:'越大越优先选择用户评分高的司机。四项权重建议合计为1。' },
+    dispatch_level_weight: { group:'dispatch', title:'服务等级权重', type:'number', min:0, max:1, step:0.05, unit:'权重', recommended:'0.20', range:'0-1', impact:'越大越优先选择V等级和派单系数高的司机。四项权重建议合计为1。' },
+    dispatch_order_weight: { group:'dispatch', title:'近7日均衡权重', type:'number', min:0, max:1, step:0.05, unit:'权重', recommended:'0.15', range:'0-1', impact:'越大越照顾近7日接单较少的司机，分配更均衡。四项权重建议合计为1。' },
+    dispatch_max_candidates: { group:'dispatch', title:'最大候选司机数', type:'number', min:1, max:50, step:1, unit:'人', recommended:'10', range:'1-50人', impact:'数值越大可供后台选择的人越多，但计算和页面信息也更多。' },
+    dispatch_max_distance_km: { group:'dispatch', title:'最大调度半径', type:'number', min:1, max:300, step:1, unit:'公里', recommended:'30', range:'1-300公里', impact:'半径外司机不会进入候选；过小可能无人可派，过大会增加司机空驶距离。' }
+  };
+
   async function loadConfig() {
     const container = $('#configContent');
     container.innerHTML = `<div class="loading-state"><div class="spinner"></div><p>正在加载配置...</p></div>`;
@@ -1546,52 +1603,45 @@
       return;
     }
 
-    let html = '<div class="config-list">';
-    configs.forEach(function (config) {
-      const isCommission = config.key === 'commission_rate';
-      const isMinWithdraw = config.key === 'min_withdraw_amount';
-      const label = config.description || config.key;
-      const displayValue = isCommission
-        ? (Number(config.value) * 100).toFixed(0) + '%'
-        : isMinWithdraw
-          ? '¥' + Number(config.value).toFixed(2)
-          : config.value;
+    const grouped = {};
+    configs.forEach(config => {
+      const group = (CONFIG_META[config.key] || {}).group || 'other';
+      (grouped[group] = grouped[group] || []).push(config);
+    });
 
-      html += `
-        <div class="config-card">
-          <div class="config-card-header">
-            <div class="config-title">
-              <span class="config-icon">⚙️</span>
-              <span>${escapeHtml(label)}</span>
+    let html = '<div class="config-overview"><b>填写规则</b><span>修改前请先查看范围和影响说明；带“敏感”标记的密钥不会明文展示。调度权重建议在“订单调度”页面统一保存。</span></div><div class="config-list">';
+    Object.keys(CONFIG_GROUPS).forEach(groupKey => {
+      const items = grouped[groupKey] || [];
+      if (!items.length) return;
+      const group = CONFIG_GROUPS[groupKey];
+      html += `<section class="config-group"><div class="config-group-head"><div><h3>${group.title}</h3><p>${group.desc}</p></div><span>${items.length} 项</span></div><div class="config-group-body">`;
+      items.forEach(config => {
+        const meta = CONFIG_META[config.key] || { title: config.description || config.key, type:'text', range:'按业务要求填写', impact:config.description || '修改后立即影响对应功能。' };
+        const currentText = meta.sensitive
+          ? (config.value ? '已配置（内容已隐藏）' : '未配置')
+          : (meta.display ? meta.display(config.value) : String(config.value || '未设置'));
+        let input = '';
+        if (meta.type === 'select') {
+          input = `<select class="form-control" id="config-value-${config.id}">${meta.options.map(option => `<option value="${escapeHtml(option[0])}" ${String(config.value) === option[0] ? 'selected' : ''}>${escapeHtml(option[1])}</option>`).join('')}</select>`;
+        } else {
+          const type = meta.type === 'password' ? 'password' : (meta.type === 'number' ? 'number' : 'text');
+          const value = meta.sensitive ? '' : config.value;
+          input = `<input type="${type}" class="form-control" id="config-value-${config.id}" value="${escapeHtml(value)}" ${meta.min != null ? `min="${meta.min}"` : ''} ${meta.max != null ? `max="${meta.max}"` : ''} ${meta.step != null ? `step="${meta.step}"` : ''} ${meta.maxLength ? `maxlength="${meta.maxLength}"` : ''} placeholder="${meta.sensitive && config.value ? '留空表示不修改，输入新值将覆盖' : '请输入配置值'}">`;
+        }
+        html += `
+          <div class="config-row">
+            <div class="config-explain">
+              <div class="config-name-line"><b>${escapeHtml(meta.title)}</b>${meta.sensitive ? '<span class="config-sensitive">敏感</span>' : ''}<code>${escapeHtml(config.key)}</code></div>
+              <p>${escapeHtml(meta.impact)}</p>
+              <div class="config-rules"><span>范围：${escapeHtml(meta.range || '-')}</span>${meta.unit ? `<span>单位：${escapeHtml(meta.unit)}</span>` : ''}${meta.recommended ? `<span>推荐：${escapeHtml(meta.recommended)}</span>` : ''}</div>
             </div>
-            <span class="badge badge-active">${escapeHtml(config.key)}</span>
-          </div>
-          <div class="config-card-body">
-            <div class="config-field">
-              <label>当前值</label>
-              <div class="config-value-display">${escapeHtml(displayValue)}</div>
-            </div>
-            <div class="config-field">
-              <label>修改为</label>
-              <div class="config-input-group">
-                <input type="text" class="form-control" id="config-value-${config.id}" value="${escapeHtml(config.value)}" placeholder="请输入新值">
-                <span class="config-hint">${isCommission ? '0-1之间的小数，如0.2=20%' : isMinWithdraw ? '金额(元)' : ''}</span>
-              </div>
-            </div>
-          </div>
-          <div class="config-card-footer">
-            <button class="btn btn-primary btn-sm" onclick="App.saveConfig(${config.id})">保存</button>
-          </div>
-        </div>`;
+            <div class="config-current"><span>当前值</span><strong>${escapeHtml(currentText)}</strong></div>
+            <div class="config-edit">${input}<button class="btn btn-primary btn-sm" onclick="App.saveConfig(${config.id})">保存</button></div>
+          </div>`;
+      });
+      html += '</div></section>';
     });
     html += '</div>';
-
-    // 说明信息
-    html += '<div class="card" style="margin-top:24px;"><div class="card-header"><h3>说明</h3></div><div class="card-body">';
-    html += '<div class="info-grid">';
-    html += renderInfoItem('抽佣比例', '设置平台从每笔完成订单中抽取的比例。例如0.2表示平台抽20%，司机得80%。');
-    html += renderInfoItem('最低提现金额', '司机申请提现时的最低金额限制。');
-    html += '</div></div></div>';
 
     container.innerHTML = html;
   }
@@ -1605,30 +1655,35 @@
     }
 
     const newValue = $('#config-value-' + id).value.trim();
-    if (!newValue) {
+    const meta = CONFIG_META[config.key] || {};
+    if (!newValue && meta.sensitive && config.value) {
+      showToast('未填写新值，原配置保持不变', 'warning');
+      return;
+    }
+    if (!newValue && !meta.allowEmpty) {
       showToast('请输入配置值', 'error');
       return;
     }
 
-    // 验证
-    if (config.key === 'commission_rate') {
-      const rate = parseFloat(newValue);
-      if (isNaN(rate) || rate < 0 || rate > 1) {
-        showToast('抽佣比例必须是0-1之间的小数', 'error');
+    if (meta.type === 'number') {
+      const value = Number(newValue);
+      if (!Number.isFinite(value) || (meta.min != null && value < meta.min) || (meta.max != null && value > meta.max)) {
+        showToast(`${meta.title}必须在${meta.range}范围内`, 'error');
         return;
       }
     }
-    if (config.key === 'min_withdraw_amount') {
-      const amount = parseFloat(newValue);
-      if (isNaN(amount) || amount < 0) {
-        showToast('最低提现金额必须是非负数字', 'error');
-        return;
-      }
+    if (meta.options && !meta.options.some(option => option[0] === newValue)) {
+      showToast(`${meta.title}取值无效`, 'error');
+      return;
+    }
+    if (meta.maxLength && newValue.length > meta.maxLength) {
+      showToast(`${meta.title}不能超过${meta.maxLength}个字符`, 'error');
+      return;
     }
 
     showConfirm({
       title: '确认修改配置',
-      message: '确定修改「' + (config.description || config.key) + '」为 ' + newValue + ' 吗？',
+      message: '确定修改「' + (meta.title || config.description || config.key) + '」吗？保存后将立即影响相关功能。',
       confirmText: '确认修改',
       onConfirm: function () { doSaveConfig(id, config.key, newValue, config.description); }
     });
@@ -1652,7 +1707,13 @@
     container.innerHTML = `<div class="loading-state"><div class="spinner"></div><p>正在加载提现记录...</p></div>`;
 
     try {
-      const data = await API.getWithdrawals({ page: 1, pageSize: 50 });
+      const data = await API.getWithdrawals({
+        page: state.withdrawals.page,
+        pageSize: state.withdrawals.pageSize,
+        status: state.withdrawals.status
+      });
+      state.withdrawals.list = data.list || [];
+      state.withdrawals.total = data.total || 0;
       renderWithdrawals(data.list || []);
     } catch (err) {
       container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${escapeHtml(err.message || '加载失败')}</p></div>`;
@@ -1663,19 +1724,46 @@
     const container = $('#withdrawalsContent');
 
     if (!list || list.length === 0) {
-      container.innerHTML = `<div class="empty-state"><div class="empty-icon">💰</div><p>暂无提现记录</p></div>`;
+      container.innerHTML = `
+        <div class="page-toolbar">
+          <div>
+            <label class="form-label">处理状态</label>
+            <select class="form-control" onchange="App.setWithdrawalFilter(this.value)">
+              <option value="all" ${state.withdrawals.status === 'all' ? 'selected' : ''}>全部状态</option>
+              <option value="pending" ${state.withdrawals.status === 'pending' ? 'selected' : ''}>待审核</option>
+              <option value="paid" ${state.withdrawals.status === 'paid' ? 'selected' : ''}>已打款</option>
+              <option value="rejected" ${state.withdrawals.status === 'rejected' ? 'selected' : ''}>已拒绝</option>
+            </select>
+          </div>
+          <div class="withdraw-total">共 0 条记录</div>
+        </div>
+        <div class="empty-state"><div class="empty-icon">💰</div><p>当前筛选下暂无提现记录</p></div>`;
       return;
     }
 
     const typeMap = { wechat: '微信', alipay: '支付宝', bank: '银行卡' };
     const statusMap = {
       pending: { label: '待审核', class: 'badge-pending' },
-      approved: { label: '已通过', class: 'badge-approved' },
+      approved: { label: '已打款', class: 'badge-approved' },
+      paid: { label: '已打款', class: 'badge-approved' },
       rejected: { label: '已拒绝', class: 'badge-cancelled' }
     };
 
-    let html = '<div class="card"><div class="table-wrapper"><table><thead><tr>';
-    html += '<th>ID</th><th>司机</th><th>电话</th><th>金额</th><th>方式</th><th>状态</th><th>申请时间</th><th>操作</th>';
+    let html = `
+      <div class="page-toolbar">
+        <div>
+          <label class="form-label">处理状态</label>
+          <select class="form-control" onchange="App.setWithdrawalFilter(this.value)">
+            <option value="all" ${state.withdrawals.status === 'all' ? 'selected' : ''}>全部状态</option>
+            <option value="pending" ${state.withdrawals.status === 'pending' ? 'selected' : ''}>待审核</option>
+            <option value="paid" ${state.withdrawals.status === 'paid' ? 'selected' : ''}>已打款</option>
+            <option value="rejected" ${state.withdrawals.status === 'rejected' ? 'selected' : ''}>已拒绝</option>
+          </select>
+        </div>
+        <div class="withdraw-total">共 ${state.withdrawals.total} 条记录</div>
+      </div>
+      <div class="card"><div class="table-wrapper"><table><thead><tr>`;
+    html += '<th>ID</th><th>司机</th><th>金额</th><th>收款信息</th><th>状态</th><th>申请时间</th><th>处理信息</th><th>操作</th>';
     html += '</tr></thead><tbody>';
 
     list.forEach(function (w) {
@@ -1684,16 +1772,22 @@
       html += `
         <tr>
           <td class="table-cell-mono">#${w.id}</td>
-          <td><strong>${escapeHtml(w.driver_name || '-')}</strong></td>
-          <td class="table-cell-mono">${escapeHtml(w.driver_phone || '-')}</td>
+          <td><strong>${escapeHtml(w.driver_name || '-')}</strong><div class="table-cell-sub">${escapeHtml(w.driver_phone || '-')}</div></td>
           <td class="table-cell-amount">${formatMoney(w.amount)}</td>
-          <td>${escapeHtml(typeMap[w.type] || w.type || '-')}</td>
+          <td>
+            <strong>${escapeHtml(typeMap[w.type] || w.type || '-')}</strong>
+            <div class="table-cell-sub">${escapeHtml(w.account_name || '-')} · ${escapeHtml(w.account || '-')}</div>
+          </td>
           <td><span class="badge ${s.class}">${escapeHtml(s.label)}</span></td>
           <td>${formatDate(w.created_at)}</td>
           <td>
+            <div>${w.payment_reference ? '流水：' + escapeHtml(w.payment_reference) : '-'}</div>
+            <div class="table-cell-sub">${escapeHtml(w.review_remark || '')}${w.processed_at ? ' · ' + formatDate(w.processed_at) : ''}</div>
+          </td>
+          <td>
             <div class="table-actions">
-              ${canProcess ? `<button class="btn btn-success btn-sm" onclick="App.approveWithdrawal(${w.id})">通过</button>
-                <button class="btn btn-danger btn-sm" onclick="App.rejectWithdrawal(${w.id})">拒绝</button>` : '<span style="color:#94a3b8">已处理</span>'}
+              ${canProcess ? `<button class="btn btn-success btn-sm" onclick="App.openWithdrawalProcess(${w.id}, 'pay')">确认打款</button>
+                <button class="btn btn-danger btn-sm" onclick="App.openWithdrawalProcess(${w.id}, 'reject')">拒绝</button>` : '<span style="color:#94a3b8">已处理</span>'}
             </div>
           </td>
         </tr>`;
@@ -1703,44 +1797,60 @@
     container.innerHTML = html;
   }
 
-  function approveWithdrawal(id) {
-    showConfirm({
-      title: '审批提现',
-      message: '确定通过此提现申请吗？',
-      desc: '通过后将从司机钱包余额中扣除对应金额',
-      confirmText: '确认通过',
-      onConfirm: function () { doApproveWithdrawal(id); }
-    });
+  function setWithdrawalFilter(status) {
+    state.withdrawals.status = status;
+    state.withdrawals.page = 1;
+    loadWithdrawals();
   }
 
-  async function doApproveWithdrawal(id) {
-    try {
-      await API.approveWithdrawal(id);
-      showToast('提现已通过', 'success');
-      loadWithdrawals();
-    } catch (err) {
-      showToast(err.message || '操作失败', 'error');
+  function openWithdrawalProcess(id, action) {
+    const item = state.withdrawals.list.find(function (w) { return w.id === id; });
+    if (!item) return showToast('提现记录不存在', 'error');
+    state.withdrawals.processingId = id;
+    state.withdrawals.action = action;
+    const isPay = action === 'pay';
+    $('#withdrawProcessTitle').textContent = isPay ? '确认提现打款' : '拒绝提现申请';
+    $('#withdrawProcessSummary').innerHTML = `
+      <div><strong>${escapeHtml(item.driver_name || '-')}</strong> · ${formatMoney(item.amount)}</div>
+      <div>${escapeHtml(item.account_name || '-')} · ${escapeHtml(item.account || '-')}</div>`;
+    $('#withdrawPaymentReferenceGroup').style.display = isPay ? 'block' : 'none';
+    $('#withdrawPaymentReference').value = '';
+    $('#withdrawProcessRemark').value = '';
+    $('#withdrawRemarkLabel').textContent = isPay ? '处理备注（选填）' : '拒绝原因';
+    $('#withdrawProcessRemark').placeholder = isPay ? '可填写打款说明' : '请填写拒绝原因，金额将自动退回司机余额';
+    const submit = $('#withdrawProcessSubmit');
+    submit.textContent = isPay ? '确认已打款' : '确认拒绝';
+    submit.className = 'btn ' + (isPay ? 'btn-success' : 'btn-danger');
+    openModal('withdrawProcessModal');
+  }
+
+  async function submitWithdrawalProcess() {
+    const id = state.withdrawals.processingId;
+    const action = state.withdrawals.action;
+    const reference = $('#withdrawPaymentReference').value.trim();
+    const remark = $('#withdrawProcessRemark').value.trim();
+    if (action === 'pay' && reference.length < 4) {
+      return showToast('请填写有效的打款流水号', 'warning');
     }
-  }
-
-  function rejectWithdrawal(id) {
-    showConfirm({
-      title: '拒绝提现',
-      message: '确定拒绝此提现申请吗？',
-      desc: '拒绝后金额将退回司机钱包余额',
-      confirmText: '确认拒绝',
-      danger: true,
-      onConfirm: function () { doRejectWithdrawal(id); }
-    });
-  }
-
-  async function doRejectWithdrawal(id) {
+    if (action === 'reject' && remark.length < 2) {
+      return showToast('请填写拒绝原因', 'warning');
+    }
+    const submit = $('#withdrawProcessSubmit');
+    submit.disabled = true;
     try {
-      await API.rejectWithdrawal(id);
-      showToast('提现已拒绝，金额退回司机钱包', 'success');
+      if (action === 'pay') {
+        await API.approveWithdrawal(id, { payment_reference: reference, remark: remark });
+        showToast('提现已确认打款', 'success');
+      } else {
+        await API.rejectWithdrawal(id, { reason: remark });
+        showToast('提现已拒绝，金额已退回司机钱包', 'success');
+      }
+      closeModal('withdrawProcessModal');
       loadWithdrawals();
     } catch (err) {
       showToast(err.message || '操作失败', 'error');
+    } finally {
+      submit.disabled = false;
     }
   }
 
@@ -2079,12 +2189,16 @@
     if (!container) return;
     container.innerHTML = `<div class="loading-state"><div class="spinner"></div><p>正在加载调度模块...</p></div>`;
     try {
-      const [levels, weights] = await Promise.all([
+      const [levels, weights, queue, logs] = await Promise.all([
         API.dispatchLevels().catch(() => []),
-        API.dispatchWeights().catch(() => null)
+        API.dispatchWeights().catch(() => null),
+        API.dispatchQueue().catch(() => ({ list: [] })),
+        API.dispatchLogs(30).catch(() => [])
       ]);
       state.dispatch.levels = levels || [];
       state.dispatch.weights = weights || null;
+      state.dispatch.queue = (queue && queue.list) || [];
+      state.dispatch.logs = logs || [];
       renderDispatchFrame();
     } catch (e) {
       container.innerHTML = `<div class="empty-state"><p>${escapeHtml(e.message || '加载失败')}</p></div>`;
@@ -2092,16 +2206,24 @@
   }
 
   function renderDispatchFrame() {
-    // 字段双兼容：后端新版返回 distance/rating/...，旧版返回 distW/ratingW/...
     const w0 = state.dispatch.weights || {};
     const num = (v, d) => { const n = Number(v); return isNaN(n) ? d : n; };
     const w = {
+      enabled: w0.enabled !== false,
+      strategy: w0.strategy || 'auto_assign',
+      requireDeposit: w0.requireDeposit !== false,
+      allowBusy: w0.allowBusy === true,
       distance: num(w0.distance != null ? w0.distance : w0.distW, 0.4),
       rating: num(w0.rating != null ? w0.rating : w0.ratingW, 0.25),
       level: num(w0.level != null ? w0.level : w0.levelW, 0.2),
       order: num(w0.order != null ? w0.order : w0.orderW, 0.15),
-      max_distance_km: num(w0.max_distance_km != null ? w0.max_distance_km : w0.maxKm, 30),
-      max_candidates: num(w0.max_candidates != null ? w0.max_candidates : w0.maxCandidates, 10)
+      maxDistanceKm: num(w0.maxDistanceKm != null ? w0.maxDistanceKm : w0.maxKm, 30),
+      maxCandidates: num(w0.maxCandidates != null ? w0.maxCandidates : w0.max_candidates, 10)
+    };
+    const strategyText = {
+      auto_assign: '自动指派第一名',
+      recommend_only: '生成推荐，司机抢单',
+      manual: '仅管理员人工指派'
     };
     const levelRows = state.dispatch.levels.map(l => {
       const minOrders = l.threshold_orders != null ? l.threshold_orders : l.min_orders;
@@ -2114,33 +2236,146 @@
         <div class="lvl-coef">派单系数 ×${l.coefficient}</div>
       </div>
     `;}).join('');
+    const queueRows = state.dispatch.queue.map(order => `
+      <tr>
+        <td><b>#${order.id}</b><div class="table-cell-sub">${escapeHtml(order.order_no || '')}</div></td>
+        <td>${escapeHtml(order.pickup_address || '-')}<div class="table-cell-sub">${escapeHtml((VEHICLE_MAP[order.vehicle_type] || {}).label || order.vehicle_type || '-')}</div></td>
+        <td><span class="badge ${order.deposit_status === 'paid' ? 'badge-online' : 'badge-pending'}">${order.deposit_status === 'paid' ? '押金已付' : '押金未付'}</span></td>
+        <td>${order.candidate_count || 0} 人</td>
+        <td>${formatDate(order.created_at)}</td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="App.selectDispatchOrder(${order.id})">查看推荐</button>
+          ${w.strategy !== 'manual' ? `<button class="btn btn-primary btn-sm" onclick="App.runQueueDispatch(${order.id})">${w.strategy === 'auto_assign' ? '立即派单' : '刷新候选'}</button>` : ''}
+        </td>
+      </tr>
+    `).join('');
+    const logRows = state.dispatch.logs.map(log => {
+      const resultText = log.result === 'no_candidate' ? '无可用司机' : (log.selected_driver_id ? '已指派' : '已推荐');
+      return `
+        <tr>
+          <td>${formatDate(log.created_at)}</td>
+          <td>#${log.order_id || '-'}<div class="table-cell-sub">${escapeHtml(log.order_no || '')}</div></td>
+          <td>${log.mode === 'manual_assign' ? '人工指派' : log.mode === 'auto_assign' ? '自动指派' : '候选推荐'}</td>
+          <td><span class="badge ${log.result === 'no_candidate' ? 'badge-pending' : 'badge-online'}">${resultText}</span></td>
+          <td>${log.selected_driver_id ? `#${log.selected_driver_id} ${escapeHtml(log.driver_name || '')}` : '-'}</td>
+          <td>${escapeHtml(log.remark || '-')}</td>
+        </tr>
+      `;
+    }).join('');
 
     $('#dispatchContent').innerHTML = `
-      <div class="page-toolbar">
-        <div>
-          <h3 class="sub-title">智能派单算法（综合排名）</h3>
-          <div class="weight-bar">
-            <div class="w-chip">距离权重 ${(w.distance*100).toFixed(0)}%</div>
-            <div class="w-chip">评分权重 ${(w.rating*100).toFixed(0)}%</div>
-            <div class="w-chip">服务等级权重 ${(w.level*100).toFixed(0)}%</div>
-            <div class="w-chip">饥饿度权重 ${(w.order*100).toFixed(0)}%</div>
-            <div class="w-chip muted">搜索半径 ${w.max_distance_km || 30}km</div>
-            <div class="w-chip muted">TopN ${w.max_candidates || 10}</div>
+      <div class="dispatch-guide">
+        <div class="dispatch-guide-title">调度如何工作</div>
+        <div class="dispatch-guide-steps">
+          <div><b>1. 进入队列</b><span>${w.requireDeposit ? '用户支付押金后，待派单订单进入队列。' : '订单创建后立即进入调度队列。'}</span></div>
+          <div><b>2. 综合排序</b><span>仅筛选审核通过、在线且无进行中订单的司机，再按距离、评分、等级和近7日接单量计算。</span></div>
+          <div><b>3. 执行策略</b><span>当前为“${strategyText[w.strategy]}”。人工指派始终会校验订单和司机状态。</span></div>
+        </div>
+      </div>
+
+      <div class="dispatch-section">
+        <div class="dispatch-section-head">
+          <div><h3 class="sub-title">派单参数</h3><p>保存后立即作用于新订单和手动重新调度。四项权重之和必须为 1。</p></div>
+          <div class="dispatch-switch-row">
+            <label class="check-control"><input id="dispatchEnabled" type="checkbox" ${w.enabled ? 'checked' : ''}><span>启用调度</span></label>
+            <label class="check-control"><input id="dispatchRequireDeposit" type="checkbox" ${w.requireDeposit ? 'checked' : ''}><span>仅派已付押金订单</span></label>
           </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input class="form-control" placeholder="请输入订单ID查询推荐司机" value="${state.dispatch.orderId || ''}" onchange="App.setDispatchOrderId(this.value)"/>
-          <button class="btn btn-primary" onclick="App.runDispatchRecommend()">计算推荐</button>
+        <div class="dispatch-form-grid">
+          <label class="dispatch-field"><span>派单策略</span><select id="dispatchStrategy" class="form-control">
+            <option value="auto_assign" ${w.strategy === 'auto_assign' ? 'selected' : ''}>自动指派综合排名第一的司机</option>
+            <option value="recommend_only" ${w.strategy === 'recommend_only' ? 'selected' : ''}>只生成推荐，保留司机抢单</option>
+            <option value="manual" ${w.strategy === 'manual' ? 'selected' : ''}>关闭自动计算，仅人工指派</option>
+          </select></label>
+          <label class="dispatch-field"><span>最大搜索半径（公里）</span><input id="dispatchMaxDistance" type="number" min="1" max="300" class="form-control" value="${w.maxDistanceKm}"></label>
+          <label class="dispatch-field"><span>最多候选人数</span><input id="dispatchMaxCandidates" type="number" min="1" max="50" class="form-control" value="${w.maxCandidates}"></label>
+          <label class="dispatch-field"><span>距离权重</span><input id="dispatchWeightDistance" type="number" min="0" max="1" step="0.05" class="form-control" value="${w.distance}"></label>
+          <label class="dispatch-field"><span>评分权重</span><input id="dispatchWeightRating" type="number" min="0" max="1" step="0.05" class="form-control" value="${w.rating}"></label>
+          <label class="dispatch-field"><span>服务等级权重</span><input id="dispatchWeightLevel" type="number" min="0" max="1" step="0.05" class="form-control" value="${w.level}"></label>
+          <label class="dispatch-field"><span>近7日均衡权重</span><input id="dispatchWeightOrder" type="number" min="0" max="1" step="0.05" class="form-control" value="${w.order}"></label>
+        </div>
+        <div class="dispatch-form-actions">
+          <span>忙碌司机默认不进入候选，避免一名司机同时执行多单。</span>
+          <button class="btn btn-primary" onclick="App.saveDispatchSettings()">保存并立即生效</button>
         </div>
       </div>
 
-      <div id="dispatchRankArea">
-        <div class="empty-state"><p>请在上方输入订单ID并点击「计算推荐」查看该订单的推荐司机排行榜</p></div>
+      <div class="dispatch-section">
+        <div class="dispatch-section-head">
+          <div><h3 class="sub-title">待调度订单</h3><p>共 ${state.dispatch.queue.length} 笔符合当前押金规则的待派订单。</p></div>
+          <button class="btn btn-outline btn-sm" onclick="App.reloadDispatch()">刷新</button>
+        </div>
+        <div class="table-wrapper">
+          <table><thead><tr><th>订单</th><th>救援位置</th><th>支付条件</th><th>已有候选</th><th>下单时间</th><th>操作</th></tr></thead>
+          <tbody>${queueRows || '<tr><td colspan="6"><div class="empty-state compact"><p>当前没有待调度订单</p></div></td></tr>'}</tbody></table>
+        </div>
       </div>
 
-      <h3 class="sub-title" style="margin-top:28px;">司机服务等级（V1-V7）</h3>
-      <div class="levels-grid">${levelRows || '<div class="empty-state"><p>暂无等级数据</p></div>'}</div>
+      <div class="dispatch-section">
+        <div class="page-toolbar">
+          <div><h3 class="sub-title">候选司机计算</h3><p class="dispatch-caption">用于查看评分明细；计算本身不会占用司机，点击“指派该司机”或“立即派单”才会改变订单。</p></div>
+          <div class="dispatch-search">
+            <input class="form-control" type="number" placeholder="输入订单ID" value="${state.dispatch.orderId || ''}" onchange="App.setDispatchOrderId(this.value)"/>
+            <button class="btn btn-primary" onclick="App.runDispatchRecommend()">计算推荐</button>
+          </div>
+        </div>
+        <div id="dispatchRankArea">
+          <div class="empty-state compact"><p>输入订单ID或从待调度列表选择订单，查看候选司机及评分依据。</p></div>
+        </div>
+      </div>
+
+      <div class="dispatch-section">
+        <div class="dispatch-section-head"><div><h3 class="sub-title">最近调度记录</h3><p>记录自动指派、人工改派、仅推荐和无候选结果，便于追溯。</p></div></div>
+        <div class="table-wrapper">
+          <table><thead><tr><th>时间</th><th>订单</th><th>方式</th><th>结果</th><th>司机</th><th>摘要</th></tr></thead>
+          <tbody>${logRows || '<tr><td colspan="6"><div class="empty-state compact"><p>暂无调度记录</p></div></td></tr>'}</tbody></table>
+        </div>
+      </div>
+
+      <div class="dispatch-section">
+        <div class="dispatch-section-head"><div><h3 class="sub-title">司机服务等级</h3><p>等级门槛由累计完成单量和评分共同决定，等级系数参与候选排名。</p></div></div>
+        <div class="levels-grid">${levelRows || '<div class="empty-state"><p>暂无等级数据</p></div>'}</div>
+      </div>
     `;
+  }
+
+  async function saveDispatchSettings() {
+    const payload = {
+      enabled: $('#dispatchEnabled').checked,
+      strategy: $('#dispatchStrategy').value,
+      requireDeposit: $('#dispatchRequireDeposit').checked,
+      allowBusy: false,
+      distance: Number($('#dispatchWeightDistance').value),
+      rating: Number($('#dispatchWeightRating').value),
+      level: Number($('#dispatchWeightLevel').value),
+      order: Number($('#dispatchWeightOrder').value),
+      maxDistanceKm: Number($('#dispatchMaxDistance').value),
+      maxCandidates: Number($('#dispatchMaxCandidates').value)
+    };
+    const total = payload.distance + payload.rating + payload.level + payload.order;
+    if (Math.abs(total - 1) > 0.001) return showToast(`四项权重之和应为1，当前为${total.toFixed(2)}`, 'warning');
+    try {
+      await API.dispatchSaveSettings(payload);
+      showToast('调度参数已保存并立即生效', 'success');
+      loadDispatch();
+    } catch (e) { showToast(e.message || '保存失败', 'error'); }
+  }
+
+  async function runQueueDispatch(orderId) {
+    try {
+      const result = await API.dispatchRun(orderId);
+      const driver = result && result.driver;
+      showToast(driver ? `已自动指派给${driver.name}` : '候选列表已更新', 'success');
+      state.dispatch.orderId = String(orderId);
+      await loadDispatch();
+      runDispatchRecommend();
+    } catch (e) { showToast(e.message || '调度失败', 'error'); }
+  }
+
+  function selectDispatchOrder(orderId) {
+    state.dispatch.orderId = String(orderId);
+    renderDispatchFrame();
+    runDispatchRecommend();
   }
 
   async function runDispatchRecommend() {
@@ -2151,8 +2386,10 @@
       const r = await API.dispatchRecommend(id);
       state.dispatch.recommend = r;
       const list = (r && r.candidates) || [];
+      const order = (r && r.order) || {};
+      const assignable = ['pending', 'accepted'].includes(order.status) && (!(r.settings && r.settings.requireDeposit) || order.deposit_status === 'paid');
       const html = !list.length ? `<div class="empty-state"><p>${escapeHtml((r && r.reason) || '该订单暂无合适司机(半径内无在线/审核通过司机)')}</p></div>` : `
-        <div class="dispatch-meta">订单 #${id} · 共 ${list.length} 名候选 · 派单方式: ${r.dispatch_mode || 'auto'}</div>
+        <div class="dispatch-meta">订单 #${id} · ${escapeHtml(order.pickup_address || '')} · 共 ${list.length} 名候选 · 当前状态：${escapeHtml((STATUS_MAP[order.status] || {}).label || order.status || '-')}</div>
         <div class="rank-list">
           ${list.map((d, i) => `
             <div class="rank-item ${i===0 ? 'top' : ''}">
@@ -2164,7 +2401,7 @@
                   <span class="lv-name">${d.level_name || ''}</span>
                 </div>
                 <div class="rk-meta">
-                  <span>距离 ${Number(d.distance_km).toFixed(1)} km</span>
+                  <span>距离 ${d.distance_km == null ? '未知' : Number(d.distance_km).toFixed(1) + ' km'}</span>
                   <span>评分 ⭐ ${Number(d.rating).toFixed(2)}</span>
                   <span>等级系数 ×${d.level_coefficient || 1}</span>
                   <span>7日接单 ${d.accept_count_7d || 0} 单</span>
@@ -2174,7 +2411,7 @@
               <div class="rk-score">
                 <div class="s1">${Number(d.score).toFixed(3)}</div>
                 <div class="s2">总分</div>
-                <button class="btn btn-primary btn-sm" onclick="App.manualAssignDriver(${id}, ${d.driver_id})">指派该司机</button>
+                ${assignable ? `<button class="btn btn-primary btn-sm" onclick="App.manualAssignDriver(${id}, ${d.driver_id})">指派该司机</button>` : '<span class="rk-disabled">当前不可指派</span>'}
               </div>
             </div>
           `).join('')}
@@ -2190,7 +2427,7 @@
     try {
       await API.assignDriver(orderId, driverId);
       showToast(`已将订单#${orderId}指派给司机#${driverId}`, 'success');
-      runDispatchRecommend();
+      loadDispatch();
     } catch (e) { showToast(e.message || '指派失败', 'error'); }
   }
 
@@ -2357,13 +2594,15 @@
     openCardBatchModal, submitCardBatch,
     openCardCreateModal, submitCardCreate,
     setDispatchOrderId(v) { state.dispatch.orderId = v; },
-    runDispatchRecommend, manualAssignDriver,
+    runDispatchRecommend, manualAssignDriver, saveDispatchSettings,
+    runQueueDispatch, selectDispatchOrder,
+    reloadDispatch: loadDispatch,
     setPayFilter(k, v) { state.payments[k] = v; state.payments.page = 1; loadPayments(); },
     runEscapeJob,
     openCreditAdjustModal, submitCreditAdjust
   });
 
-  window.App = {
+  window.App = Object.assign(window.App || {}, {
     showLogin: showLogin,
     loadDashboard: loadDashboard,
     goDrivers: function () { switchView('drivers'); },
@@ -2386,9 +2625,10 @@
     deleteCard: deleteCard,
     savePricing: savePricing,
     saveConfig: saveConfig,
-    approveWithdrawal: approveWithdrawal,
-    rejectWithdrawal: rejectWithdrawal
-  };
+    setWithdrawalFilter: setWithdrawalFilter,
+    openWithdrawalProcess: openWithdrawalProcess,
+    submitWithdrawalProcess: submitWithdrawalProcess
+  });
 
   /* ============================================================
      初始化

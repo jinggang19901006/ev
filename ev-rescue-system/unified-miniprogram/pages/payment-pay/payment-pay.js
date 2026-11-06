@@ -11,7 +11,11 @@ Page({
     useCoupon: true,
     loading: false,
     paying: false,
-    escapeHint: ''
+    escapeHint: '',
+    ratingStars: [1, 2, 3, 4, 5],
+    selectedRating: 0,
+    ratingComment: '',
+    submittingRating: false
   },
 
   async onLoad(opts) {
@@ -79,7 +83,9 @@ Page({
       this.setData({
         summary: s,
         cardList,
-        selectedCardId: (cardList.length) ? cardList[0].id : 0
+        selectedCardId: (cardList.length) ? cardList[0].id : 0,
+        selectedRating: Number(order.user_rating || 0),
+        ratingComment: order.user_comment || ''
       });
       const hx = (s.order && s.order.escape_flagged) ? 1 : 0;
       const score = s.credit_score;
@@ -149,10 +155,46 @@ Page({
       if (r && r.already_paid) {
         wx.showToast({ title: '订单已结清，无需重复支付', icon: 'none' });
       } else {
-        wx.showToast({ title: (r && r.message) || '支付成功', icon: 'success' });
+        wx.showToast({ title: '确认成功，司机收入已结算', icon: 'none' });
       }
       await this._reload();
-      setTimeout(() => wx.navigateBack({ fail: () => {} }), 1200);
+      setTimeout(() => {
+        wx.pageScrollTo({ selector: '#ratingSection', duration: 300 });
+      }, 300);
     } catch (e) {} finally { this.setData({ paying: false }); }
+  },
+
+  selectRating(e) {
+    if (this.data.summary && this.data.summary.order && this.data.summary.order.user_rating) return;
+    this.setData({ selectedRating: Number(e.currentTarget.dataset.rating) || 0 });
+  },
+
+  onRatingComment(e) {
+    this.setData({ ratingComment: String(e.detail.value || '').slice(0, 200) });
+  },
+
+  async submitRating() {
+    if (this.data.submittingRating) return;
+    if (!this.data.selectedRating) {
+      wx.showToast({ title: '请选择1到5星评分', icon: 'none' });
+      return;
+    }
+    this.setData({ submittingRating: true });
+    try {
+      const result = await api.orders.rate(
+        this.data.orderId,
+        this.data.selectedRating,
+        this.data.ratingComment
+      );
+      this.setData({
+        'summary.order.user_rating': result.rating || this.data.selectedRating,
+        'summary.order.user_comment': result.comment || this.data.ratingComment
+      });
+      wx.showToast({ title: '评价已提交', icon: 'success' });
+    } catch (e) {
+      wx.showToast({ title: (e && e.message) || '评价提交失败', icon: 'none' });
+    } finally {
+      this.setData({ submittingRating: false });
+    }
   }
 });

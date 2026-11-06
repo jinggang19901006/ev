@@ -1,0 +1,7 @@
+{
+  "envId": "maidongyuan-d8gakruxv24b1be13",
+  "$schema": "https://static.cloudbase.net/cli/cloudbaserc.schema.json",
+  "cloudrun": {
+    "name": "ev-rescue-api"
+  }
+}

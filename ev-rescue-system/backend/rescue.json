@@ -7,9 +7,21 @@
         "phone": "13800002222",
         "nickname": "烟测用户A",
         "avatar": "",
-        "total_orders": 3,
+        "total_orders": 1,
         "total_spent": 189,
         "created_at": "2026-08-28 09:45:19",
+        "unpaid_orders_count": 1,
+        "credit_score": 70
+      },
+      {
+        "id": 2,
+        "openid": "mock_dcbdced06ce7863cdcf4",
+        "phone": "14780465001",
+        "nickname": "Jing",
+        "avatar": "http://tmp/bNcbvlX8LcCK65601fbdc0d51cde06e831348c5b7aa6.jpeg",
+        "total_orders": 1,
+        "total_spent": 1338,
+        "created_at": "2026-11-05 03:25:24",
         "unpaid_orders_count": 1,
         "credit_score": 100
       }
@@ -22,18 +34,21 @@
         "name": "救援司机",
         "avatar": "",
         "id_card_no": "",
-        "status": "online",
+        "status": "offline",
         "approved": 1,
         "rating": 5,
-        "total_orders": 1,
-        "total_earnings": 151.2,
-        "wallet_balance": 151.2,
+        "total_orders": 2,
+        "total_earnings": 0,
+        "wallet_balance": 0,
         "level_id": 1,
-        "accept_count_7d": 3,
-        "last_order_at": "2026-09-01 01:53:29",
-        "lat": 31.47,
-        "lng": 104.74,
-        "created_at": "2026-08-28 09:56:25"
+        "accept_count_7d": 4,
+        "last_order_at": "2026-11-05 03:41:45",
+        "lat": 23.129163,
+        "lng": 113.264435,
+        "created_at": "2026-08-28 09:56:25",
+        "rating_count": 0,
+        "location_updated_at": "2026-11-05 06:18:04",
+        "location_accuracy": 65
       }
     ],
     "orders": [
@@ -78,7 +93,85 @@
         "charging_end_time": "2026-09-01 01:53:33",
         "complete_time": "2026-09-01 01:53:33",
         "driver_income": 151.2,
-        "platform_income": 37.8
+        "platform_income": 37.8,
+        "dispatch_status": "waiting",
+        "dispatch_reason": "",
+        "assigned_at": null,
+        "settlement_status": "pending",
+        "settled_at": null,
+        "user_confirmed_at": null,
+        "settlement_adjustment": -151.2,
+        "escape_flagged": 1,
+        "escape_at": "2026-11-05 05:38:43",
+        "distance_source": "legacy_client_value",
+        "distance_is_estimate": 1,
+        "distance_calculated_at": null,
+        "pricing_driver_id": null,
+        "driver_start_lat": null,
+        "driver_start_lng": null,
+        "route_duration_minutes": null,
+        "route_toll": null,
+        "route_policy": null,
+        "route_request_id": ""
+      },
+      {
+        "order_no": "EV202611051126218574",
+        "user_id": 2,
+        "vehicle_type": "small",
+        "vehicle_plate": "",
+        "battery_percent": 10,
+        "dashboard_off": 1,
+        "pickup_lat": 23.129163,
+        "pickup_lng": 113.264435,
+        "pickup_address": "广东省广州市越秀区北京街道府前路1号",
+        "pickup_description": "",
+        "distance_km": 200,
+        "base_price": 168,
+        "distance_fee": 1170,
+        "extra_fee": 0,
+        "total_price": 1338,
+        "is_night": 0,
+        "deposit_amount": 401.4,
+        "deposit_status": "paid",
+        "id": 5,
+        "created_at": "2026-11-05 03:26:21",
+        "status": "completed",
+        "payment_status": "unpaid",
+        "user_rating": null,
+        "user_comment": "",
+        "final_pay_amount": 0,
+        "card_discount_amount": 0,
+        "use_card_id": null,
+        "dispatch_mode": "manual",
+        "dispatch_candidates": "",
+        "driver_id": 1,
+        "start_time": "2026-11-05 03:41:55",
+        "dispatch_time": "2026-11-05 03:41:55",
+        "before_photo": "http://localhost:3108/uploads/1793850140588-fv9tyjs01.jpg",
+        "arrive_time": "2026-11-05 03:42:20",
+        "charging_start_time": "2026-11-05 03:42:27",
+        "after_photo": "http://localhost:3108/uploads/1793850192494-cgxefap9e.jpg",
+        "charging_end_time": "2026-11-05 03:43:24",
+        "complete_time": "2026-11-05 03:43:24",
+        "driver_income": 1070.4,
+        "platform_income": 267.6,
+        "dispatch_status": "waiting",
+        "dispatch_reason": "",
+        "assigned_at": null,
+        "settlement_status": "pending",
+        "settled_at": null,
+        "user_confirmed_at": null,
+        "settlement_adjustment": -1070.4,
+        "distance_source": "legacy_client_value",
+        "distance_is_estimate": 1,
+        "distance_calculated_at": null,
+        "pricing_driver_id": null,
+        "driver_start_lat": null,
+        "driver_start_lng": null,
+        "route_duration_minutes": null,
+        "route_toll": null,
+        "route_policy": null,
+        "route_request_id": ""
       }
     ],
     "pricing_config": [
@@ -169,12 +262,12 @@
         "price": 123,
         "total_uses": 1,
         "used_count": 0,
-        "status": "unused",
-        "user_id": null,
-        "allocated_by": null,
-        "allocated_at": null,
+        "status": "active",
+        "user_id": 2,
+        "allocated_by": 1,
+        "allocated_at": "2026-11-05 03:54:01",
         "expired_at": null,
-        "remark": "",
+        "remark": "批量分配共1张",
         "created_admin_id": 1,
         "created_at": "2026-09-01 01:49:55"
       }
@@ -328,9 +421,68 @@
         "value": "30",
         "description": "派单最大半径(公里)",
         "created_at": "2026-08-28 09:45:16"
+      },
+      {
+        "id": 21,
+        "key": "dispatch_enabled",
+        "value": "1",
+        "description": "是否启用订单调度：1启用，0停用",
+        "created_at": "2026-11-05 03:50:53"
+      },
+      {
+        "id": 22,
+        "key": "dispatch_strategy",
+        "value": "auto_assign",
+        "description": "派单策略：auto_assign自动指派/recommend_only推荐抢单/manual仅人工",
+        "created_at": "2026-11-05 03:50:53"
+      },
+      {
+        "id": 23,
+        "key": "dispatch_require_deposit",
+        "value": "1",
+        "description": "是否仅调度已支付押金的订单",
+        "created_at": "2026-11-05 03:50:53"
+      },
+      {
+        "id": 24,
+        "key": "dispatch_allow_busy",
+        "value": "0",
+        "description": "候选司机是否允许忙碌状态（建议关闭）",
+        "created_at": "2026-11-05 03:50:53"
+      },
+      {
+        "id": 25,
+        "key": "tencent_map_key",
+        "value": "5CWBZ-NHMC3-RSG3P-OMYNI-XSHMH-RAFOD",
+        "description": "腾讯位置服务WebService Key（驾车路线计价必填）",
+        "created_at": "2026-11-05 06:19:36"
+      },
+      {
+        "id": 26,
+        "key": "tencent_map_driving_policy",
+        "value": "SHORT_DISTANCE",
+        "description": "腾讯地图驾车路线策略：SHORT_DISTANCE距离短/LEAST_TIME时间短",
+        "created_at": "2026-11-05 06:19:36"
       }
     ],
-    "withdrawals": [],
+    "withdrawals": [
+      {
+        "id": 1,
+        "driver_id": 1,
+        "driver_name": "救援司机",
+        "driver_phone": "13800138001",
+        "amount": 100,
+        "type": "wechat",
+        "account": "13800138001",
+        "account_name": "救援司机",
+        "status": "rejected",
+        "review_remark": "测试",
+        "payment_reference": "",
+        "processed_by": "admin",
+        "processed_at": "2026-11-05 03:23:26",
+        "created_at": "2026-11-05 03:23:01"
+      }
+    ],
     "unified_accounts": [
       {
         "id": 1,
@@ -357,8 +509,22 @@
         "user_id": null,
         "driver_id": 1,
         "last_login_role": "driver",
-        "last_login_at": "2026-09-01 01:01:51",
+        "last_login_at": "2026-11-05 06:11:55",
         "created_at": "2026-08-28 09:56:25"
+      },
+      {
+        "id": 3,
+        "phone": "14780465001",
+        "nickname": "Jing",
+        "avatar": "http://tmp/bNcbvlX8LcCK65601fbdc0d51cde06e831348c5b7aa6.jpeg",
+        "wx_openid": "mock_dcbdced06ce7863cdcf4",
+        "password_hash": null,
+        "status": "active",
+        "user_id": 2,
+        "driver_id": null,
+        "last_login_role": "user",
+        "last_login_at": "2026-11-05 08:45:26",
+        "created_at": "2026-11-05 03:25:24"
       }
     ],
     "sms_captchas": [
@@ -393,16 +559,6 @@
         "created_at": "2026-08-31 02:40:46"
       },
       {
-        "id": 12,
-        "phone": "13800138001",
-        "scene": "login",
-        "code": "1234",
-        "expired_at": "2026-09-01 09:06:49",
-        "used": 1,
-        "used_at": "2026-09-01 01:01:51",
-        "created_at": "2026-09-01 01:01:49"
-      },
-      {
         "id": 14,
         "phone": "13800002222",
         "scene": "login",
@@ -411,6 +567,36 @@
         "used": 1,
         "used_at": "2026-09-01 01:53:29",
         "created_at": "2026-09-01 01:53:29"
+      },
+      {
+        "id": 21,
+        "phone": "14780465001",
+        "scene": "register",
+        "code": "1234",
+        "expired_at": "2026-11-05 12:04:35",
+        "used": 0,
+        "used_at": null,
+        "created_at": "2026-11-05 03:59:35"
+      },
+      {
+        "id": 26,
+        "phone": "13800138001",
+        "scene": "login",
+        "code": "1234",
+        "expired_at": "2026-11-05 14:16:53",
+        "used": 1,
+        "used_at": "2026-11-05 06:11:55",
+        "created_at": "2026-11-05 06:11:53"
+      },
+      {
+        "id": 27,
+        "phone": "14780465001",
+        "scene": "login",
+        "code": "1234",
+        "expired_at": "2026-11-05 16:50:23",
+        "used": 1,
+        "used_at": "2026-11-05 08:45:26",
+        "created_at": "2026-11-05 08:45:23"
       }
     ],
     "payment_records": [
@@ -489,10 +675,50 @@
         "raw_callback": null,
         "created_at": "2026-09-01 01:53:29",
         "paid_at": "2026-09-01 01:53:29"
+      },
+      {
+        "id": 5,
+        "transaction_id": "PAY17938491867033039",
+        "order_id": 5,
+        "user_id": 2,
+        "driver_id": null,
+        "biz_type": "deposit",
+        "pay_type": "wechat",
+        "pay_channel": "mnp",
+        "amount": 401.4,
+        "status": "paid",
+        "third_party_no": "MOCK_PAY17938491867033039",
+        "refund_amount": 0,
+        "refund_at": null,
+        "remark": "押金，比例0.3,最低50,总额1338",
+        "raw_callback": null,
+        "created_at": "2026-11-05 03:26:26",
+        "paid_at": "2026-11-05 03:26:26"
       }
     ],
-    "credit_scores": [],
-    "card_allocations": [],
+    "credit_scores": [
+      {
+        "id": 1,
+        "user_id": 1,
+        "score": 100,
+        "change_amount": -30,
+        "balance_after": 70,
+        "change_reason": "订单EV202609010953297612超过24h未支付，判定逃单，扣30分",
+        "created_at": "2026-11-05 05:38:43"
+      }
+    ],
+    "card_allocations": [
+      {
+        "id": 1,
+        "card_id": 4,
+        "card_no": "CARD273954601053",
+        "from_user_id": null,
+        "to_user_id": 2,
+        "allocated_by": 1,
+        "remark": "批量分配共1张",
+        "created_at": "2026-11-05 03:54:01"
+      }
+    ],
     "card_usages": [],
     "driver_levels": [
       {
@@ -502,10 +728,10 @@
         "min_orders": 0,
         "min_rating": 0,
         "coefficient": 0.8,
-        "badge_color": "#9CA3AF",
-        "gradient_from": "#F3F4F6",
-        "gradient_to": "#E5E7EB",
-        "glow_color": "rgba(156,163,175,0.4)",
+        "badge_color": "#0F766E",
+        "gradient_from": "#CCFBF1",
+        "gradient_to": "#99F6E4",
+        "glow_color": "rgba(13,148,136,0.35)",
         "created_at": "2026-08-28 09:45:16"
       },
       {
@@ -604,15 +830,18 @@
   "counters": {
     "pricing_config": 3,
     "admins": 1,
-    "system_config": 20,
+    "system_config": 26,
     "driver_levels": 7,
-    "sms_captchas": 14,
-    "unified_accounts": 2,
-    "users": 1,
-    "orders": 4,
-    "payment_records": 4,
+    "sms_captchas": 27,
+    "unified_accounts": 3,
+    "users": 2,
+    "orders": 5,
+    "payment_records": 5,
     "drivers": 1,
     "dispatch_logs": 1,
-    "service_cards": 4
+    "service_cards": 4,
+    "withdrawals": 1,
+    "card_allocations": 1,
+    "credit_scores": 1
   }
 }

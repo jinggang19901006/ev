@@ -30,6 +30,8 @@
 .nav-title {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  flex-shrink: 0;
 }
 
 .nav-title-text {
@@ -54,6 +56,7 @@
   background: rgba(255, 255, 255, 0.05);
   border-radius: 40rpx;
   border: 1rpx solid #1e3556;
+  flex-shrink: 0;
 }
 
 .status-toggle.toggling {
@@ -286,20 +289,25 @@
   box-sizing: border-box;
 }
 .order-card:active {
-  transform: scale(0.985);
-  transition: transform 0.15s ease;
+  transform: none;
+}
+
+.order-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 58rpx;
+  padding: 18rpx 24rpx 0;
 }
 
 .card-top-badge {
-  position: absolute;
-  top: 0; right: 0;
   display: flex;
   align-items: center;
   gap: 6rpx;
-  padding: 8rpx 16rpx 8rpx 20rpx;
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  border-radius: 0 24rpx 0 20rpx;
-  z-index: 2;
+  padding: 6rpx 14rpx;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1rpx solid rgba(239, 68, 68, 0.3);
+  border-radius: 8rpx;
 }
 .badge-dot {
   width: 10rpx; height: 10rpx;
@@ -314,15 +322,14 @@
 .badge-text {
   font-size: 20rpx;
   font-weight: 600;
-  color: #fff;
-  letter-spacing: 1rpx;
+  color: #f87171;
 }
 
 .order-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 28rpx 28rpx 20rpx 28rpx;
+  padding: 18rpx 28rpx 20rpx;
 }
 .order-vehicle-section {
   display: flex;
@@ -433,6 +440,10 @@
   border-radius: 16rpx;
   border: 1rpx solid rgba(59, 130, 246, 0.1);
 }
+
+.order-address-box:active {
+  background: rgba(59, 130, 246, 0.12);
+}
 .address-icon-box {
   margin-right: 12rpx;
   flex-shrink: 0;
@@ -457,11 +468,33 @@
   word-break: break-all;
 }
 
-.order-card-footer {
+.address-nav {
   display: flex;
-  justify-content: space-between;
+  width: 68rpx;
+  margin-left: 16rpx;
+  flex-shrink: 0;
+  flex-direction: column;
   align-items: center;
-  padding: 20rpx 28rpx 28rpx 28rpx;
+  justify-content: center;
+  align-self: stretch;
+  border-left: 1rpx solid rgba(56, 189, 248, 0.16);
+}
+
+.address-nav-icon {
+  color: #38bdf8;
+  font-size: 27rpx;
+  line-height: 1;
+  transform: rotate(-25deg);
+}
+
+.address-nav-text {
+  margin-top: 6rpx;
+  color: #38bdf8;
+  font-size: 19rpx;
+}
+
+.order-card-footer {
+  padding: 22rpx 24rpx 26rpx;
   margin-top: 20rpx;
   border-top: 1rpx solid rgba(30, 53, 86, 0.8);
 }
@@ -480,11 +513,15 @@
 }
 .order-action-buttons {
   display: flex;
+  width: 100%;
   gap: 14rpx;
 }
+.action-btn-ghost,
 .action-btn-outline {
   height: 64rpx;
-  padding: 0 22rpx;
+  min-width: 0;
+  margin: 0;
+  padding: 0 18rpx;
   border-radius: 32rpx;
   font-size: 24rpx;
   font-weight: 600;
@@ -496,8 +533,14 @@
   color: #38bdf8;
   border: 1rpx solid rgba(56, 189, 248, 0.4);
   line-height: 64rpx;
-  flex-shrink: 0;
+  flex: 1;
 }
+.action-btn-ghost {
+  border: 1rpx solid rgba(148, 163, 184, 0.28);
+  background: rgba(148, 163, 184, 0.06);
+  color: #94a3b8;
+}
+.action-btn-ghost::after { border: none; }
 .action-btn-outline::after { border: none; }
 .action-btn-outline:active {
   background: rgba(56, 189, 248, 0.15);
@@ -506,7 +549,9 @@
 
 .action-btn-primary {
   height: 64rpx;
-  padding: 0 30rpx;
+  min-width: 0;
+  margin: 0;
+  padding: 0 24rpx;
   border-radius: 32rpx;
   font-size: 26rpx;
   font-weight: 700;
@@ -517,7 +562,7 @@
   color: #fff;
   box-shadow: 0 6rpx 20rpx rgba(245, 158, 11, 0.4);
   line-height: 64rpx;
-  flex-shrink: 0;
+  flex: 1.35;
   border: none;
 }
 .action-btn-primary::after { border: none; }
@@ -556,57 +601,165 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 120rpx 60rpx 80rpx 60rpx;
+  padding: 84rpx 60rpx 80rpx;
 }
-.empty-illustration {
+
+.listening-radar {
   position: relative;
-  width: 200rpx;
-  height: 200rpx;
+  width: 240rpx;
+  height: 240rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 40rpx;
-}
-.empty-illustration-circle {
-  width: 120rpx;
-  height: 120rpx;
+  margin-bottom: 36rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.05) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2rpx solid rgba(59, 130, 246, 0.3);
-  z-index: 2;
+  overflow: hidden;
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.12) 0%, rgba(10, 22, 40, 0.18) 68%, transparent 69%);
 }
-.empty-illustration-icon { font-size: 56rpx; }
-.empty-illustration-ring {
+
+.radar-grid {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 50%;
+  background:
+    linear-gradient(90deg, transparent 49.5%, rgba(34, 197, 94, 0.14) 50%, transparent 50.5%),
+    linear-gradient(transparent 49.5%, rgba(34, 197, 94, 0.14) 50%, transparent 50.5%);
+}
+
+.radar-ring {
   position: absolute;
   border-radius: 50%;
-  border: 2rpx solid rgba(59, 130, 246, 0.15);
-  animation: ringPulse 3s ease-in-out infinite;
+  border: 2rpx solid rgba(34, 197, 94, 0.2);
 }
-.empty-illustration-ring.ring-1 {
-  width: 160rpx; height: 160rpx;
-  animation-delay: 0s;
+
+.radar-ring-outer {
+  top: 8rpx;
+  right: 8rpx;
+  bottom: 8rpx;
+  left: 8rpx;
 }
-.empty-illustration-ring.ring-2 {
-  width: 200rpx; height: 200rpx;
-  animation-delay: 0.5s;
+
+.radar-ring-middle {
+  top: 54rpx;
+  right: 54rpx;
+  bottom: 54rpx;
+  left: 54rpx;
 }
-@keyframes ringPulse {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.1); opacity: 0.2; }
+
+.radar-sweep {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  bottom: 8rpx;
+  left: 8rpx;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0deg, transparent 292deg, rgba(34, 197, 94, 0.04) 315deg, rgba(34, 197, 94, 0.42) 360deg);
+  animation: radarSweep 2.4s linear infinite;
 }
+
+.radar-signal {
+  position: absolute;
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 16rpx rgba(34, 197, 94, 0.9);
+  animation: signalPulse 2.4s ease-in-out infinite;
+}
+
+.signal-one {
+  top: 56rpx;
+  right: 58rpx;
+}
+
+.signal-two {
+  left: 52rpx;
+  bottom: 64rpx;
+  animation-delay: 1.2s;
+}
+
+.radar-core {
+  position: relative;
+  z-index: 2;
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #102d2a;
+  border: 2rpx solid rgba(34, 197, 94, 0.55);
+  box-shadow: 0 0 32rpx rgba(34, 197, 94, 0.32);
+  animation: coreBreath 2s ease-in-out infinite;
+}
+
+.radar-bolt {
+  width: 30rpx;
+  height: 40rpx;
+  background: #22c55e;
+  clip-path: polygon(58% 0, 4% 57%, 40% 57%, 28% 100%, 96% 38%, 58% 38%);
+}
+
+@keyframes radarSweep {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes signalPulse {
+  0%, 38%, 100% { opacity: 0.28; transform: scale(0.7); }
+  48%, 68% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes coreBreath {
+  0%, 100% { transform: scale(0.96); opacity: 0.9; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+
+.listening-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52rpx;
+  margin-bottom: 10rpx;
+}
+
 .empty-title {
   font-size: 34rpx;
   font-weight: 700;
-  color: #cbd5e1;
-  margin-bottom: 12rpx;
+  color: #dcfce7;
 }
+
+.listening-dots {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  margin-left: 12rpx;
+  padding-top: 10rpx;
+}
+
+.listening-dot {
+  width: 6rpx;
+  height: 6rpx;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: listeningDot 1.2s ease-in-out infinite;
+}
+
+.dot-two { animation-delay: 0.16s; }
+.dot-three { animation-delay: 0.32s; }
+
+@keyframes listeningDot {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-5rpx); }
+}
+
 .empty-subtitle {
   font-size: 24rpx;
-  color: #64748b;
-  margin-bottom: 40rpx;
+  color: #7d948d;
+  margin-bottom: 36rpx;
+  text-align: center;
 }
 .empty-tips {
   display: flex;
@@ -639,4 +792,13 @@
 .tip-text {
   font-size: 24rpx;
   color: #94a3b8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-sweep,
+  .radar-signal,
+  .radar-core,
+  .listening-dot {
+    animation: none;
+  }
 }

@@ -739,6 +739,31 @@
   </div>
 </div>
 
+<!-- ===== 提现审核与打款 Modal ===== -->
+<div class="modal-overlay" id="withdrawProcessModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 id="withdrawProcessTitle">处理提现</h3>
+      <button class="modal-close" data-close="withdrawProcessModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="withdraw-process-summary" id="withdrawProcessSummary"></div>
+      <div class="form-group" id="withdrawPaymentReferenceGroup">
+        <label class="form-label">打款流水号</label>
+        <input class="form-control" id="withdrawPaymentReference" type="text" maxlength="80" placeholder="请输入微信、支付宝或银行打款流水号"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="withdrawRemarkLabel">处理备注</label>
+        <textarea class="form-control withdraw-remark-input" id="withdrawProcessRemark" maxlength="200" placeholder="可填写打款说明"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close="withdrawProcessModal">取消</button>
+      <button class="btn btn-primary" id="withdrawProcessSubmit" onclick="App.submitWithdrawalProcess()">确认</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast 容器 -->
 <div class="toast-container" id="toastContainer"></div>
 

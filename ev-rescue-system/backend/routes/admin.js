@@ -1,5 +1,53 @@
 const express = require('express');
 const db = require('../db');
+const dispatch = require('../utils/order_dispatch');
+
+const CONFIG_NUMBER_RANGES = {
+  commission_rate: [0, 1],
+  min_withdraw_amount: [1, 100000],
+  deposit_ratio: [0, 1],
+  deposit_min_amount: [0, 10000],
+  escape_penalty_score: [0, 100],
+  bad_rating_penalty_score: [0, 100],
+  pay_on_time_bonus_score: [0, 20],
+  credit_min_to_order: [0, 100],
+  unpaid_pay_timeout_hours: [1, 168],
+  dispatch_distance_weight: [0, 1],
+  dispatch_rating_weight: [0, 1],
+  dispatch_level_weight: [0, 1],
+  dispatch_order_weight: [0, 1],
+  dispatch_max_candidates: [1, 50],
+  dispatch_max_distance_km: [1, 300]
+};
+const CONFIG_ENUMS = {
+  sms_mode: ['dev', 'prod'],
+  dispatch_enabled: ['0', '1'],
+  dispatch_strategy: ['auto_assign', 'recommend_only', 'manual'],
+  dispatch_require_deposit: ['0', '1'],
+  dispatch_allow_busy: ['0', '1'],
+  tencent_map_driving_policy: ['SHORT_DISTANCE', 'LEAST_TIME']
+};
+const CONFIG_INTEGER_KEYS = new Set([
+  'escape_penalty_score',
+  'bad_rating_penalty_score',
+  'pay_on_time_bonus_score',
+  'credit_min_to_order',
+  'unpaid_pay_timeout_hours',
+  'dispatch_max_candidates',
+  'dispatch_max_distance_km'
+]);
+const CONFIG_MAX_LENGTHS = {
+  wx_appid: 128,
+  wx_appsecret: 256,
+  wx_merchant_id: 64,
+  wx_pay_key: 256,
+  tencent_map_key: 128
+};
+const SENSITIVE_CONFIG_KEYS = new Set([
+  'wx_appsecret',
+  'wx_pay_key',
+  'tencent_map_key'
+]);
 
 module.exports = function(jwt, JWT_SECRET, adminAuthMiddleware, upload) {
   const router = express.Router();
@@ -320,31 +368,28 @@ module.exports = function(jwt, JWT_SECRET, adminAuthMiddleware, upload) {
   });
 
   // 指派司机
-  router.post('/orders/:id/assign', adminAuthMiddleware, (req, res) => {
+  router.post('/orders/:id/assign', adminAuthMiddleware, async (req, res) => {
     const { driverId } = req.body;
-    const order = db.prepare('SELECT id, status, driver_id FROM orders WHERE id = ?').get(req.params.id);
-    if (!order) {
-      return res.json({ code: 1, message: '订单不存在' });
+    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
+    let result;
+    try {
+      const candidates = order
+        ? await dispatch.rankDriversForOrder(order, { manualDriverId: Number(driverId) })
+        : [];
+      result = await dispatch.assignDriver(order, driverId, {
+        manual: true,
+        candidates,
+        reason: String(req.body.reason || '管理员在调度台人工指派')
+      });
+    } catch (error) {
+      return res.json({ code: 1, message: error.message || '腾讯地图路线计算失败' });
     }
-    const driver = db.prepare('SELECT id, name, approved, status FROM drivers WHERE id = ?').get(driverId);
-    if (!driver) {
-      return res.json({ code: 1, message: '司机不存在' });
-    }
-    if (!driver.approved) {
-      return res.json({ code: 1, message: '该司机未通过审核' });
-    }
-
-    const now = db.now();
-    // 如果订单已经有司机，先释放原司机
-    if (order.driver_id) {
-      db.prepare("UPDATE drivers SET status = 'online' WHERE id = ?").run(order.driver_id);
-    }
-    // 指派新司机
-    db.prepare("UPDATE orders SET driver_id = ?, status = 'accepted', start_time = ? WHERE id = ?")
-      .run(driverId, now, req.params.id);
-    // 将新司机设为忙碌
-    db.prepare("UPDATE drivers SET status = 'busy' WHERE id = ?").run(driverId);
-    res.json({ code: 0, message: '已指派司机：' + driver.name });
+    if (!result.ok) return res.json({ code: 1, message: result.message });
+    res.json({
+      code: 0,
+      message: '已指派司机：' + result.driver.name,
+      data: { order: result.order, driver: result.driver }
+    });
   });
 
   /* ================ 司机管理增强 ================ */
@@ -371,7 +416,7 @@ module.exports = function(jwt, JWT_SECRET, adminAuthMiddleware, upload) {
 
   // 获取可用司机列表(已审核且在线)
   router.get('/drivers/available', adminAuthMiddleware, (req, res) => {
-    const drivers = db.prepare("SELECT id, name, phone, status FROM drivers WHERE approved = 1 ORDER BY status DESC, created_at DESC").all();
+    const drivers = db.prepare("SELECT id, name, phone, status FROM drivers WHERE approved = 1 AND status = 'online' ORDER BY created_at DESC").all();
     res.json({ code: 0, data: drivers });
   });
 
@@ -379,7 +424,11 @@ module.exports = function(jwt, JWT_SECRET, adminAuthMiddleware, upload) {
 
   // 获取系统配置
   router.get('/config', adminAuthMiddleware, (req, res) => {
-    const configs = db.data.system_config || [];
+    const configs = (db.data.system_config || []).map(item => ({
+      ...item,
+      value: SENSITIVE_CONFIG_KEYS.has(item.key) && item.value ? '********' : item.value,
+      configured: SENSITIVE_CONFIG_KEYS.has(item.key) ? Boolean(item.value) : undefined
+    }));
     res.json({ code: 0, data: configs });
   });
 
@@ -389,7 +438,27 @@ module.exports = function(jwt, JWT_SECRET, adminAuthMiddleware, upload) {
     if (!key || value === undefined) {
       return res.json({ code: 1, message: '缺少参数' });
     }
-    db.setConfig(key, value, description);
+    if (!(db.data.system_config || []).some(item => item.key === key)) {
+      return res.json({ code: 1, message: '不允许创建未知配置项' });
+    }
+    const stringValue = String(value).trim();
+    if (CONFIG_NUMBER_RANGES[key]) {
+      const numberValue = Number(stringValue);
+      const [min, max] = CONFIG_NUMBER_RANGES[key];
+      if (!Number.isFinite(numberValue) || numberValue < min || numberValue > max) {
+        return res.json({ code: 1, message: `配置值必须在 ${min} 到 ${max} 之间` });
+      }
+      if (CONFIG_INTEGER_KEYS.has(key) && !Number.isInteger(numberValue)) {
+        return res.json({ code: 1, message: '该配置必须填写整数' });
+      }
+    }
+    if (CONFIG_ENUMS[key] && !CONFIG_ENUMS[key].includes(stringValue)) {
+      return res.json({ code: 1, message: `配置值无效，可选值：${CONFIG_ENUMS[key].join(' / ')}` });
+    }
+    if (CONFIG_MAX_LENGTHS[key] && stringValue.length > CONFIG_MAX_LENGTHS[key]) {
+      return res.json({ code: 1, message: `配置内容不能超过 ${CONFIG_MAX_LENGTHS[key]} 个字符` });
+    }
+    db.setConfig(key, stringValue, description);
     res.json({ code: 0, message: '配置已更新' });
   });
 
@@ -421,10 +490,17 @@ module.exports = function(jwt, JWT_SECRET, adminAuthMiddleware, upload) {
     if (withdrawal.status !== 'pending') {
       return res.json({ code: 1, message: '该提现已处理' });
     }
-    withdrawal.status = 'approved';
+    const paymentReference = String(req.body.payment_reference || '').trim();
+    if (paymentReference.length < 4 || paymentReference.length > 80) {
+      return res.json({ code: 1, message: '请填写有效的打款流水号' });
+    }
+    withdrawal.status = 'paid';
+    withdrawal.payment_reference = paymentReference;
+    withdrawal.review_remark = String(req.body.remark || '').trim().slice(0, 200);
+    withdrawal.processed_by = req.admin.username || req.admin.id;
     withdrawal.processed_at = db.now();
     db.save();
-    res.json({ code: 0, message: '提现已通过' });
+    res.json({ code: 0, message: '提现已确认打款', data: withdrawal });
   });
 
   // 拒绝提现（退回余额）
@@ -436,13 +512,21 @@ module.exports = function(jwt, JWT_SECRET, adminAuthMiddleware, upload) {
     if (withdrawal.status !== 'pending') {
       return res.json({ code: 1, message: '该提现已处理' });
     }
+    const reason = String(req.body.reason || '').trim();
+    if (reason.length < 2 || reason.length > 200) {
+      return res.json({ code: 1, message: '请填写拒绝原因' });
+    }
     withdrawal.status = 'rejected';
+    withdrawal.review_remark = reason;
+    withdrawal.processed_by = req.admin.username || req.admin.id;
     withdrawal.processed_at = db.now();
     // 退回余额
-    db.prepare('UPDATE drivers SET wallet_balance = wallet_balance + ? WHERE id = ?')
-      .run(withdrawal.amount, withdrawal.driver_id);
+    const driver = db.data.drivers.find(d => d.id === withdrawal.driver_id);
+    if (driver) {
+      driver.wallet_balance = Math.round((Number(driver.wallet_balance || 0) + Number(withdrawal.amount || 0)) * 100) / 100;
+    }
     db.save();
-    res.json({ code: 0, message: '提现已拒绝，金额退回司机钱包' });
+    res.json({ code: 0, message: '提现已拒绝，金额退回司机钱包', data: withdrawal });
   });
 
   // 司机钱包列表（所有司机余额一览）

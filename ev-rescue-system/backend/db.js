@@ -5,8 +5,9 @@
  */
 const fs = require('fs');
 const path = require('path');
+const cloudbase = require('./cloudbase');
 
-const DB_FILE = path.join(__dirname, 'rescue.json');
+const DB_FILE = process.env.RESCUE_DB_FILE || path.join(__dirname, 'rescue.json');
 
 class JSONDatabase {
   constructor() {
@@ -33,7 +34,10 @@ class JSONDatabase {
       // ------- 新增表：订单分配调度 -------
       dispatch_logs: []       // 智能派单日志表（推荐列表、最终选择人、是否手动指派）
     };
+    this.emptyData = JSON.parse(JSON.stringify(this.data));
     this.counters = {};
+    this.cloudReady = false;
+    this.persistQueue = Promise.resolve();
     this.load();
     this.initDefaults();
   }
@@ -54,6 +58,49 @@ class JSONDatabase {
   save() {
     const payload = { data: this.data, counters: this.counters };
     fs.writeFileSync(DB_FILE, JSON.stringify(payload, null, 2));
+    if (this.cloudReady) {
+      const snapshot = JSON.parse(JSON.stringify(payload));
+      this.persistQueue = this.persistQueue
+        .catch(() => {})
+        .then(() => cloudbase.saveState(snapshot))
+        .catch(error => {
+          console.error('云数据库持久化失败:', error.message);
+          throw error;
+        });
+    }
+  }
+
+  async ready() {
+    if (!cloudbase.isEnabled()) return;
+
+    const snapshot = await cloudbase.loadState();
+    if (snapshot && snapshot.data) {
+      this.data = { ...this.emptyData, ...snapshot.data };
+      this.counters = snapshot.counters || {};
+      this.initDefaults();
+      console.log(`已从云数据库恢复业务数据: ${cloudbase.envId}`);
+    } else {
+      console.log('云数据库暂无业务快照，将迁移当前 rescue.json');
+    }
+
+    this.cloudReady = true;
+    await this.persistNow();
+  }
+
+  async persistNow() {
+    if (!cloudbase.isEnabled()) return;
+    const snapshot = JSON.parse(JSON.stringify({
+      data: this.data,
+      counters: this.counters
+    }));
+    this.persistQueue = this.persistQueue
+      .catch(() => {})
+      .then(() => cloudbase.saveState(snapshot));
+    await this.persistQueue;
+  }
+
+  async flush() {
+    await this.persistQueue;
   }
 
   nextId(table) {
@@ -77,8 +124,19 @@ class JSONDatabase {
     }
     // 2. 管理员账号种子
     if (this.data.admins.length === 0) {
-      this.data.admins.push({ id: 1, username: 'admin', password: 'admin123', name: '系统管理员', created_at: this.now() });
+      this.data.admins.push({
+        id: 1,
+        username: process.env.ADMIN_USERNAME || 'admin',
+        password: process.env.ADMIN_PASSWORD || 'admin123',
+        name: '系统管理员',
+        created_at: this.now()
+      });
       this.counters.admins = 1;
+    }
+    if (process.env.ADMIN_PASSWORD && this.data.admins[0]) {
+      if (process.env.ADMIN_USERNAME) this.data.admins[0].username = process.env.ADMIN_USERNAME;
+      this.data.admins[0].password = process.env.ADMIN_PASSWORD;
+      this.save();
     }
     // 3. 系统配置KV（新增：押金/信用积分/微信支付/逃单拦截/服务卡相关）
     const defaultConfigs = [
@@ -98,7 +156,13 @@ class JSONDatabase {
       { key: 'wx_appsecret', value: '', description: '微信小程序AppSecret（生产环境必填）' },
       { key: 'wx_merchant_id', value: '', description: '微信支付商户号（生产环境必填）' },
       { key: 'wx_pay_key', value: '', description: '微信支付APIv3密钥（生产环境必填）' },
+      { key: 'tencent_map_key', value: '', description: '腾讯位置服务WebService Key（驾车路线计价必填）' },
+      { key: 'tencent_map_driving_policy', value: 'SHORT_DISTANCE', description: '腾讯地图驾车路线策略：SHORT_DISTANCE距离短/LEAST_TIME时间短' },
       // ---- 智能派单配置 ----
+      { key: 'dispatch_enabled', value: '1', description: '是否启用订单调度：1启用，0停用' },
+      { key: 'dispatch_strategy', value: 'auto_assign', description: '派单策略：auto_assign自动指派/recommend_only推荐抢单/manual仅人工' },
+      { key: 'dispatch_require_deposit', value: '1', description: '是否仅调度已支付押金的订单' },
+      { key: 'dispatch_allow_busy', value: '0', description: '候选司机是否允许忙碌状态（建议关闭）' },
       { key: 'dispatch_distance_weight', value: '0.4', description: '派单权重-距离(越近越高分)' },
       { key: 'dispatch_rating_weight', value: '0.25', description: '派单权重-司机评分' },
       { key: 'dispatch_level_weight', value: '0.2', description: '派单权重-服务等级(V系数)' },
@@ -117,7 +181,7 @@ class JSONDatabase {
     // 4. 司机等级 V1-V7 种子（满足用户偏好：渐变色+发光+徽章的基础数据）
     if (!this.data.driver_levels || this.data.driver_levels.length === 0) {
       this.data.driver_levels = [
-        { id: 1, level: 'V1', name: '新晋救援者', min_orders: 0, min_rating: 0, coefficient: 0.8, badge_color: '#9CA3AF', gradient_from: '#F3F4F6', gradient_to: '#E5E7EB', glow_color: 'rgba(156,163,175,0.4)', created_at: this.now() },
+        { id: 1, level: 'V1', name: '新晋救援者', min_orders: 0, min_rating: 0, coefficient: 0.8, badge_color: '#0F766E', gradient_from: '#CCFBF1', gradient_to: '#99F6E4', glow_color: 'rgba(13,148,136,0.35)', created_at: this.now() },
         { id: 2, level: 'V2', name: '熟练司机', min_orders: 10, min_rating: 4.5, coefficient: 0.9, badge_color: '#22C55E', gradient_from: '#DCFCE7', gradient_to: '#86EFAC', glow_color: 'rgba(34,197,94,0.45)', created_at: this.now() },
         { id: 3, level: 'V3', name: '精英救援', min_orders: 50, min_rating: 4.6, coefficient: 1.0, badge_color: '#3B82F6', gradient_from: '#DBEAFE', gradient_to: '#93C5FD', glow_color: 'rgba(59,130,246,0.5)', created_at: this.now() },
         { id: 4, level: 'V4', name: '金牌救援', min_orders: 150, min_rating: 4.7, coefficient: 1.1, badge_color: '#F59E0B', gradient_from: '#FEF3C7', gradient_to: '#FCD34D', glow_color: 'rgba(245,158,11,0.55)', created_at: this.now() },
@@ -129,17 +193,53 @@ class JSONDatabase {
     }
     // 5. 为已有 drivers 补充字段（wallet_balance + level_id + accept_count_7d + last_order_at）
     let schemaModified = false;
+    const v1 = (this.data.driver_levels || []).find(level => Number(level.id) === 1);
+    if (v1 && (v1.badge_color === '#9CA3AF' || v1.gradient_from === '#F3F4F6')) {
+      v1.badge_color = '#0F766E';
+      v1.gradient_from = '#CCFBF1';
+      v1.gradient_to = '#99F6E4';
+      v1.glow_color = 'rgba(13,148,136,0.35)';
+      schemaModified = true;
+    }
     if (this.data.drivers && this.data.drivers.length > 0) {
       for (const d of this.data.drivers) {
         if (d.wallet_balance === undefined) { d.wallet_balance = 0; schemaModified = true; }
         if (d.level_id === undefined) { d.level_id = 1; schemaModified = true; }   // 默认V1
         if (d.accept_count_7d === undefined) { d.accept_count_7d = 0; schemaModified = true; }
         if (d.last_order_at === undefined) { d.last_order_at = null; schemaModified = true; }
-        // ===== D2：司机坐标为 0/空 → 回填绵阳中心（避免 0,0 vs 绵阳 = 999km 永远派单空）=====
-        if (!d.lat) { d.lat = 31.4700; schemaModified = true; }
-        if (!d.lng) { d.lng = 104.7400; schemaModified = true; }
-        // ===== D1：approved 空/0 → 回填 1（开发模式默认通过）=====
-        if (d.approved === undefined || d.approved === 0 || d.approved === false || String(d.approved) === '0') { d.approved = 1; schemaModified = true; }
+        if (d.rating_count === undefined) {
+          const ratedOrders = (this.data.orders || []).filter(o =>
+            Number(o.driver_id) === Number(d.id) &&
+            Number(o.user_rating) >= 1 &&
+            Number(o.user_rating) <= 5
+          );
+          d.rating_count = ratedOrders.length;
+          if (ratedOrders.length > 0) {
+            d.rating = Math.round(
+              ratedOrders.reduce((sum, order) => sum + Number(order.user_rating), 0) /
+              ratedOrders.length * 100
+            ) / 100;
+          }
+          schemaModified = true;
+        }
+        if (d.lat === undefined) { d.lat = null; schemaModified = true; }
+        if (d.lng === undefined) { d.lng = null; schemaModified = true; }
+        if (d.location_updated_at === undefined) { d.location_updated_at = null; schemaModified = true; }
+        if (d.location_accuracy === undefined) { d.location_accuracy = null; schemaModified = true; }
+        if (d.status === 'online') {
+          const locationText = d.location_updated_at
+            ? String(d.location_updated_at).replace(' ', 'T')
+            : '';
+          const locationTime = locationText
+            ? new Date(/[zZ]|[+-]\d{2}:\d{2}$/.test(locationText) ? locationText : locationText + 'Z').getTime()
+            : NaN;
+          if (!Number.isFinite(locationTime) || Date.now() - locationTime > 15 * 60 * 1000) {
+            d.status = 'offline';
+            schemaModified = true;
+          }
+        }
+        // 仅为缺失字段补默认值；已被管理员拒绝的 approved=0 必须保留。
+        if (d.approved === undefined || d.approved === null) { d.approved = 1; schemaModified = true; }
         if (d.id_card_no === undefined) { d.id_card_no = ''; schemaModified = true; }
       }
     }
@@ -160,6 +260,39 @@ class JSONDatabase {
         if (o.use_card_id === undefined) { o.use_card_id = null; schemaModified = true; }
         if (o.dispatch_mode === undefined) { o.dispatch_mode = 'manual'; schemaModified = true; } // auto/manual
         if (o.dispatch_candidates === undefined) { o.dispatch_candidates = ''; schemaModified = true; }
+        if (o.dispatch_status === undefined) { o.dispatch_status = 'waiting'; schemaModified = true; }
+        if (o.dispatch_reason === undefined) { o.dispatch_reason = ''; schemaModified = true; }
+        if (o.assigned_at === undefined) { o.assigned_at = null; schemaModified = true; }
+        if (o.settlement_status === undefined) {
+          const wasSettled = o.status === 'completed' && o.payment_status === 'paid';
+          o.settlement_status = wasSettled ? 'settled' : (o.status === 'completed' ? 'pending' : 'unsettled');
+          o.settled_at = wasSettled ? (o.paid_at || o.complete_time || this.now()) : null;
+          o.user_confirmed_at = wasSettled ? o.settled_at : null;
+
+          // 旧逻辑在司机点完成时提前入账。仅对“已完成但未支付”的旧订单做一次冲回。
+          if (o.status === 'completed' && o.payment_status !== 'paid' && Number(o.driver_income || 0) > 0) {
+            const driver = (this.data.drivers || []).find(d => Number(d.id) === Number(o.driver_id));
+            if (driver) {
+              const amount = Number(o.driver_income || 0);
+              driver.total_earnings = Math.max(0, Math.round((Number(driver.total_earnings || 0) - amount) * 100) / 100);
+              driver.wallet_balance = Math.max(0, Math.round((Number(driver.wallet_balance || 0) - amount) * 100) / 100);
+              o.settlement_adjustment = -amount;
+            }
+          }
+          schemaModified = true;
+        }
+        if (o.settled_at === undefined) { o.settled_at = null; schemaModified = true; }
+        if (o.user_confirmed_at === undefined) { o.user_confirmed_at = null; schemaModified = true; }
+        if (o.distance_source === undefined) { o.distance_source = 'legacy_client_value'; schemaModified = true; }
+        if (o.distance_is_estimate === undefined) { o.distance_is_estimate = 1; schemaModified = true; }
+        if (o.distance_calculated_at === undefined) { o.distance_calculated_at = null; schemaModified = true; }
+        if (o.pricing_driver_id === undefined) { o.pricing_driver_id = null; schemaModified = true; }
+        if (o.driver_start_lat === undefined) { o.driver_start_lat = null; schemaModified = true; }
+        if (o.driver_start_lng === undefined) { o.driver_start_lng = null; schemaModified = true; }
+        if (o.route_duration_minutes === undefined) { o.route_duration_minutes = null; schemaModified = true; }
+        if (o.route_toll === undefined) { o.route_toll = null; schemaModified = true; }
+        if (o.route_policy === undefined) { o.route_policy = null; schemaModified = true; }
+        if (o.route_request_id === undefined) { o.route_request_id = ''; schemaModified = true; }
       }
     }
     // 8. 为已有 service_cards 补充字段（车辆类型映射+面额+绑定用户+分配记录）
@@ -172,6 +305,17 @@ class JSONDatabase {
         if (c.remark === undefined) { c.remark = ''; schemaModified = true; }
       }
     }
+    // 9. 为已有提现记录补齐审核与打款追踪字段。
+    if (this.data.withdrawals && this.data.withdrawals.length > 0) {
+      for (const w of this.data.withdrawals) {
+        if (w.status === 'approved') { w.status = 'paid'; schemaModified = true; }
+        if (w.account_name === undefined) { w.account_name = ''; schemaModified = true; }
+        if (w.review_remark === undefined) { w.review_remark = ''; schemaModified = true; }
+        if (w.payment_reference === undefined) { w.payment_reference = ''; schemaModified = true; }
+        if (w.processed_by === undefined) { w.processed_by = null; schemaModified = true; }
+        if (w.processed_at === undefined) { w.processed_at = null; schemaModified = true; }
+      }
+    }
     if (cfgAdded || schemaModified) this.save();
     this.save();
   }
@@ -180,6 +324,15 @@ class JSONDatabase {
    * 获取系统配置
    */
   getConfig(key, defaultValue) {
+    const envMap = {
+      wx_appid: 'WX_APPID',
+      wx_appsecret: 'WX_APPSECRET',
+      wx_merchant_id: 'WX_MERCHANT_ID',
+      wx_pay_key: 'WX_PAY_KEY',
+      tencent_map_key: 'TENCENT_MAP_KEY'
+    };
+    const envKey = envMap[key];
+    if (envKey && process.env[envKey]) return process.env[envKey];
     const item = this.data.system_config.find(c => c.key === key);
     return item ? item.value : defaultValue;
   }
@@ -306,10 +459,8 @@ class PreparedStatement {
   _getTableDefaults(table) {
     const defaults = {
       users: { phone: '', nickname: '微信用户', avatar: '', total_orders: 0, total_spent: 0 },
-      // ===== D1-D2 修复：司机默认 approved=1（开发模式不用审核）+ lat/lng 默认绵阳中心（避免 0,0→999km 永远被过滤）=====
-      // （绵阳中心经纬度约 31.4700°N, 104.7400°E，覆盖"绵阳及周边30km服务范围"用户订单）
-      drivers: { status: 'offline', approved: 1, rating: 5.0, total_orders: 0, total_earnings: 0, wallet_balance: 0, level_id: 1, accept_count_7d: 0, last_order_at: null, lat: 31.4700, lng: 104.7400, id_card_no: '' },
-      orders: { status: 'pending', payment_status: 'unpaid', dashboard_off: 0, distance_km: 0, base_price: 0, distance_fee: 0, extra_fee: 0, total_price: 0, is_night: 0, user_rating: null, user_comment: '', deposit_amount: 0, deposit_status: 'none', final_pay_amount: 0, card_discount_amount: 0, use_card_id: null, dispatch_mode: 'manual', dispatch_candidates: '' },
+      drivers: { status: 'offline', approved: 1, rating: 5.0, rating_count: 0, total_orders: 0, total_earnings: 0, wallet_balance: 0, level_id: 1, accept_count_7d: 0, last_order_at: null, lat: null, lng: null, location_updated_at: null, location_accuracy: null, id_card_no: '' },
+      orders: { status: 'pending', payment_status: 'unpaid', dashboard_off: 0, distance_km: 0, distance_source: 'unavailable', distance_is_estimate: 1, distance_calculated_at: null, pricing_driver_id: null, driver_start_lat: null, driver_start_lng: null, route_duration_minutes: null, route_toll: null, route_policy: null, route_request_id: '', base_price: 0, distance_fee: 0, extra_fee: 0, total_price: 0, is_night: 0, user_rating: null, user_comment: '', deposit_amount: 0, deposit_status: 'none', final_pay_amount: 0, card_discount_amount: 0, use_card_id: null, dispatch_mode: 'manual', dispatch_candidates: '', dispatch_status: 'waiting', dispatch_reason: '', assigned_at: null, settlement_status: 'unsettled', settled_at: null, user_confirmed_at: null },
       pricing_config: { is_active: 1, base_distance_km: 5, extra_per_km: 7 },
       service_cards: { total_uses: 1, used_count: 0, status: 'unused', vehicle_type: 'small', price: 0, allocated_by: null, allocated_at: null, remark: '' },
       // 新表默认值

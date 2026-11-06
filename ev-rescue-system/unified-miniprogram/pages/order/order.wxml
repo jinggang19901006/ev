@@ -181,17 +181,14 @@
 
       <view class="form-divider"></view>
 
-      <!-- 距离 -->
+      <!-- 系统根据司机实时位置自动计算，禁止用户手工修改计价距离 -->
       <view class="form-row">
-        <text class="form-label">距离(公里)</text>
-        <input
-          class="form-input"
-          type="digit"
-          placeholder="预估距离"
-          placeholder-class="placeholder"
-          value="{{distanceKm}}"
-          bindinput="onDistanceInput"
-        />
+        <text class="form-label">救援距离</text>
+        <view class="distance-result">
+          <text class="distance-value" wx:if="{{distanceAvailable}}">{{distanceKm}} 公里</text>
+          <text class="distance-pending" wx:else>待计算</text>
+          <text class="distance-hint">{{distanceMessage}}</text>
+        </view>
       </view>
 
       <view class="form-divider"></view>

@@ -17,6 +17,8 @@
 
 const helpers = require('../utils/helpers');
 const crypto = require('crypto');
+const dispatch = require('../utils/order_dispatch');
+const settlement = require('../utils/order_settlement');
 
 module.exports = function (authMiddleware, adminAuthMiddleware) {
   const router = require('express').Router();
@@ -24,6 +26,14 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
 
   /** 生成系统内部流水号：PAY + 时间戳 + 4位随机 */
   const genTxn = () => 'PAY' + Date.now().toString() + Math.floor(1000 + Math.random() * 9000);
+
+  const runDispatchSafely = async order => {
+    try {
+      return await dispatch.dispatchOrder(order);
+    } catch (error) {
+      return { ok: false, assigned: false, message: error.message || '腾讯地图路线计算失败' };
+    }
+  };
 
   /** 写入支付记录 */
   const insertPayment = (row) => {
@@ -66,9 +76,13 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
   router.get('/order/:id/summary', authMiddleware, (req, res) => {
     const { order, error } = loadOrderAndAuth(req.params.id, req);
     if (error) return res.json({ code: 400, message: error });
+    const driver = (db.data.drivers || []).find(item => Number(item.id) === Number(order.driver_id));
     const total = +(order.total_price || 0).toFixed(2);
     const dep = helpers.calcDeposit(total);
-    const depositPaid = order.deposit_status === 'paid' ? (order.deposit_amount || dep.deposit) : 0;
+    const depositAmount = order.deposit_status === 'paid'
+      ? Number(order.deposit_amount || 0)
+      : Number(dep.deposit || 0);
+    const depositPaid = order.deposit_status === 'paid' ? depositAmount : 0;
     const cardDiscount = +(order.card_discount_amount || 0).toFixed(2);
     const finalPayBeforeCard = Math.max(0, +(total - depositPaid).toFixed(2));
     const finalPay = Math.max(0, +(finalPayBeforeCard - cardDiscount).toFixed(2));
@@ -121,13 +135,14 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
         order_no: order.order_no,
         status: order.status,
         total_price: total,
-        deposit: { ratio: dep.ratio, min: dep.min, should_pay: dep.deposit },
+        deposit: { ratio: dep.ratio, min: dep.min, should_pay: depositAmount },
         deposit_status: order.deposit_status,
         deposit_paid: depositPaid,
         card_discount_amount: cardDiscount,
         final_pay_before_card: finalPayBeforeCard,
         final_pay_amount: finalPay,
         payment_status: order.payment_status,
+        settlement_status: order.settlement_status || 'unsettled',
         available_cards: myCards,
         overdue_hours: Number(db.getConfig('unpaid_pay_timeout_hours', '24')),
         credit_score: helpers.getCreditScore(order.user_id),
@@ -137,19 +152,29 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
         vehicle_size_cn: vehicleCn,
         deposit_ratio: dep.ratio,
         deposit_min: dep.min,
-        deposit_amount: Number(dep.deposit || 0),
+        deposit_amount: depositAmount,
         order: {
           id: order.id,
           order_no: order.order_no,
           vehicle_type: order.vehicle_type,
           distance_km: Number(order.distance_km || 0),
+          distance_source: order.distance_source || 'unavailable',
+          distance_is_estimate: Number(order.distance_is_estimate || 0),
+          distance_calculated_at: order.distance_calculated_at || null,
+          route_duration_minutes: order.route_duration_minutes,
+          route_policy: order.route_policy || null,
           time_type: timeType,
           is_night: Number(order.is_night || 0),
           total_amount: total,
           total_price: total,
           deposit_status: order.deposit_status || 'unpaid',
           payment_status: order.payment_status || 'unpaid',
+          settlement_status: order.settlement_status || 'unsettled',
           status: order.status,
+          driver_name: driver?.name || '',
+          driver_rating: Number(driver?.rating || 5),
+          user_rating: order.user_rating,
+          user_comment: order.user_comment || '',
           escape_flagged: escapeFlagged,
           address: order.pickup_address || ''
         }
@@ -161,16 +186,24 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
   // 2. 押金支付（下单后必须立即支付，否则订单不会进入派单池 pending → accepted）
   //    MVP：mode=mock 直接成功；生产 mode=wechat 调用微信统一下单返回 prepay_id + paySign
   // -----------------------------------------------------------
-  router.post('/order/:id/deposit', authMiddleware, (req, res) => {
+  router.post('/order/:id/deposit', authMiddleware, async (req, res) => {
     const { order, error } = loadOrderAndAuth(req.params.id, req);
     if (error) return res.json({ code: 400, message: error });
     if (order.status === 'cancelled') return res.json({ code: 400, message: '订单已取消' });
     // 幂等：押金已支付时返回 code:0（非错误码），前端不误弹错、不可重复扣款
     if (order.deposit_status === 'paid') {
+      const dispatchResult = order.status === 'pending' ? await runDispatchSafely(order) : null;
       return res.json({
         code: 0,
         message: '押金已支付，无需重复支付',
-        data: { mode: 'idempotent', already_paid: true, amount: order.deposit_amount || 0, deposit_status: 'paid', payment_status: order.payment_status }
+        data: {
+          mode: 'idempotent',
+          already_paid: true,
+          amount: order.deposit_amount || 0,
+          deposit_status: 'paid',
+          payment_status: order.payment_status,
+          dispatch: dispatchResult
+        }
       });
     }
 
@@ -194,9 +227,16 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
       order.deposit_status = 'paid';
       order.payment_status = order.payment_status === 'unpaid' ? 'deposit_paid' : order.payment_status;
       db.save();
+      const dispatchResult = await runDispatchSafely(order);
       return res.json({
         code: 0, message: '【模拟】押金支付成功',
-        data: { mode: 'mock', amount: dep.deposit, transaction_id: rec.transaction_id, deposit_status: order.deposit_status }
+        data: {
+          mode: 'mock',
+          amount: dep.deposit,
+          transaction_id: rec.transaction_id,
+          deposit_status: order.deposit_status,
+          dispatch: dispatchResult
+        }
       });
     }
 
@@ -226,7 +266,7 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
   // -----------------------------------------------------------
   // 3. 微信支付回调（生产）
   // -----------------------------------------------------------
-  router.post('/wechat/notify', (req, res) => {
+  router.post('/wechat/notify', async (req, res) => {
     const body = req.body || {};
     const txn = (db.data.payment_records || []).find(r => r.transaction_id === body.out_trade_no);
     if (txn) {
@@ -241,9 +281,14 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
           if (order.payment_status === 'unpaid') order.payment_status = 'deposit_paid';
         } else if (txn.biz_type === 'final_pay') {
           order.payment_status = 'paid';
+          order.user_confirmed_at = order.user_confirmed_at || db.now();
+          settlement.settleOrder(order, { settledAt: txn.paid_at || db.now() });
         }
       }
       db.save();
+      if (order && txn.biz_type === 'deposit' && order.status === 'pending') {
+        await runDispatchSafely(order);
+      }
     }
     res.json({ code: 'SUCCESS', message: 'OK' });
   });
@@ -258,9 +303,17 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
       if (order.status !== 'completed') return res.json({ code: 400, message: '订单未完成，暂时不能支付尾款' });
       // 幂等：尾款已结清返回 code:0，避免重复扣款/误弹错误
       if (order.payment_status === 'paid') {
+        const settlementResult = settlement.settleOrder(order);
         return res.json({
           code: 0, message: '订单已支付，无需重复支付',
-          data: { already_paid: true, need_pay: false, payment_status: 'paid', final_pay_amount: order.final_pay_amount || 0 }
+          data: {
+            already_paid: true,
+            need_pay: false,
+            payment_status: 'paid',
+            final_pay_amount: order.final_pay_amount || 0,
+            settlement_status: order.settlement_status,
+            driver_income: settlementResult.driverIncome || Number(order.driver_income || 0)
+          }
         });
       }
 
@@ -313,8 +366,11 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
       }
 
       let creditAfter = helpers.getCreditScore(order.user_id);
+      let settlementResult = null;
       if (!needPay) {
         order.payment_status = 'paid';
+        order.user_confirmed_at = order.user_confirmed_at || db.now();
+        settlementResult = settlement.settleOrder(order);
         // 更新用户累计消费
         const user = (db.data.users || []).find(u => u.id === order.user_id);
         if (user) {
@@ -346,6 +402,8 @@ module.exports = function (authMiddleware, adminAuthMiddleware) {
           card_discount_amount: discount,
           final_pay_amount: finalPay,
           payment_status: order.payment_status,
+          settlement_status: order.settlement_status,
+          driver_income: settlementResult ? settlementResult.driverIncome : 0,
           transaction_id: rec.transaction_id,
           credit_score_after: creditAfter,
           credit_score: creditAfter

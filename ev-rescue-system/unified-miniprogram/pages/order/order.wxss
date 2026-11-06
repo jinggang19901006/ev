@@ -286,6 +286,34 @@
   text-align: right;
 }
 
+.distance-result {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6rpx;
+}
+
+.distance-value {
+  color: #00d4ff;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.distance-pending {
+  color: #8b9bb0;
+  font-size: 28rpx;
+}
+
+.distance-hint {
+  max-width: 390rpx;
+  color: #5a6a7a;
+  font-size: 20rpx;
+  line-height: 1.4;
+  text-align: right;
+}
+
 .placeholder {
   color: #3a4a5a;
 }

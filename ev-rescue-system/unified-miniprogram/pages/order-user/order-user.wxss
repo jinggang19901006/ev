@@ -283,6 +283,8 @@
   margin-top: 20rpx;
   padding-top: 20rpx;
   border-top: 1rpx solid #1e3556;
+  gap: 12rpx;
+  flex-wrap: wrap;
 }
 
 .time-label {
@@ -332,6 +334,16 @@
 .arrow-text {
   font-size: 24rpx;
   color: #00d4ff;
+  font-weight: 600;
+}
+
+.rating-entry {
+  color: #fbbf24;
+}
+
+.rated-inline {
+  color: #fbbf24;
+  font-size: 23rpx;
   font-weight: 600;
 }
 

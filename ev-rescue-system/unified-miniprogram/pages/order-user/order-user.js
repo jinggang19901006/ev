@@ -57,6 +57,7 @@ Page({
   },
 
   onShow() {
+    app.syncTabBar(this)
     const loggedIn = !!app.globalData.token
     this.setData({ isLoggedIn: loggedIn })
     if (loggedIn) {
@@ -94,7 +95,8 @@ Page({
           statusLabel: order.status_cn || statInfo.label,
           statusClass: statInfo.class,
           vehicleLabel: order.vehicle_size_cn || this.data.vehicleMap[vehType] || order.vehicle_type || '未知',
-          isActive: !['completed', 'cancelled'].includes(stat)
+          isActive: !['completed', 'cancelled'].includes(stat),
+          canRate: stat === 'completed' && order.payment_status === 'paid' && !order.user_rating
         }
       })
 
@@ -195,6 +197,12 @@ Page({
     if (stat === 'cancelled') {
       wx.showToast({ title: '该订单已取消', icon: 'none' })
     }
+  },
+
+  goRate(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id) return
+    wx.navigateTo({ url: '/pages/payment-pay/payment-pay?id=' + id + '&stage=final' })
   },
 
   /**

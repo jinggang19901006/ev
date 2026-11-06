@@ -22,6 +22,7 @@ Page({
     currentStepIndex: 0,
     beforePhoto: '',
     afterPhoto: '',
+    afterPhotoFileId: '',
     showExtraFee: false,
     highwayFee: '',
     parkingFee: '',
@@ -64,12 +65,12 @@ Page({
       const orderData = raw && raw.data ? raw.data : raw;
       if (orderData) {
         const formatted = this.formatOrder(orderData);
-        const beforePhoto = api.resolveImageUrl(
-          orderData.before_photo || orderData.beforePhoto || ''
-        );
-        const afterPhoto = api.resolveImageUrl(
-          orderData.after_photo || orderData.afterPhoto || ''
-        );
+        const beforePhotoFileId = orderData.before_photo || orderData.beforePhoto || '';
+        const afterPhotoFileId = orderData.after_photo || orderData.afterPhoto || '';
+        const [beforePhoto, afterPhoto] = await Promise.all([
+          api.resolveImageUrlForDisplay(beforePhotoFileId),
+          api.resolveImageUrlForDisplay(afterPhotoFileId)
+        ]);
         // 状态归一：后端 dispatched 对应 UI 上 en_route（老 UI 按 en_route 条件渲染）
         const rawStatus = orderData.status || 'accepted';
         const currentStatus = rawStatus === 'dispatched' ? 'en_route' : rawStatus;
@@ -78,6 +79,7 @@ Page({
           currentStatus,
           beforePhoto,
           afterPhoto,
+          afterPhotoFileId,
           loading: false
         });
         this.updateStepIndex();
@@ -125,6 +127,8 @@ Page({
       vehicleModel: vehicleTypeMap[rawType] || rawType || '未知车型',
       plateNumber: order.vehicle_plate || order.plateNumber || order.plate_number || order.licensePlate || '',
       address: order.pickup_address || order.address || order.location || order.pickupAddress || '未知地址',
+      latitude: Number(order.pickup_lat != null ? order.pickup_lat : (order.latitude != null ? order.latitude : order.lat)) || 0,
+      longitude: Number(order.pickup_lng != null ? order.pickup_lng : (order.longitude != null ? order.longitude : order.lng)) || 0,
       price: price,
       driverIncome: driverIncome.toFixed(2),
       batteryLevel: order.battery_percent != null
@@ -194,6 +198,22 @@ Page({
     wx.makePhoneCall({ phoneNumber: String(phone) });
   },
 
+  onNavigate() {
+    const order = this.data.order;
+    if (!order || !order.latitude || !order.longitude) {
+      wx.showToast({ title: '该订单缺少定位坐标', icon: 'none' });
+      return;
+    }
+    wx.openLocation({
+      latitude: order.latitude,
+      longitude: order.longitude,
+      name: '救援地点',
+      address: order.address,
+      scale: 16,
+      fail: () => wx.showToast({ title: '地图打开失败，请检查定位权限', icon: 'none' })
+    });
+  },
+
   async onActionStart() {
     await this.updateStatus('en_route', '已出发，正在前往救援地点');
   },
@@ -201,18 +221,19 @@ Page({
   async onActionArrive() {
     const photo = await this.takePhoto('before');
     if (!photo) return;
+    let photoFileId = '';
     let photoUrl = '';
     try {
       const uploadResult = await api.uploadImage(photo);
-      photoUrl = uploadResult && uploadResult.url ? uploadResult.url : (uploadResult || '');
-      photoUrl = api.resolveImageUrl(photoUrl);
+      photoFileId = uploadResult && uploadResult.url ? uploadResult.url : (uploadResult || '');
+      photoUrl = await api.resolveImageUrlForDisplay(photoFileId);
     } catch (err) {
       console.error('上传照片失败:', err);
       wx.showToast({ title: '照片上传失败，请重试', icon: 'none' });
       return;
     }
     this.setData({ beforePhoto: photoUrl });
-    await this.updateStatus('arrived', '已到达救援地点', { before_photo: photoUrl });
+    await this.updateStatus('arrived', '已到达救援地点', { before_photo: photoFileId });
   },
 
   async onActionStartCharge() {
@@ -222,17 +243,18 @@ Page({
   async onActionEndCharge() {
     const photo = await this.takePhoto('after');
     if (!photo) return;
+    let photoFileId = '';
     let photoUrl = '';
     try {
       const uploadResult = await api.uploadImage(photo);
-      photoUrl = uploadResult && uploadResult.url ? uploadResult.url : (uploadResult || '');
-      photoUrl = api.resolveImageUrl(photoUrl);
+      photoFileId = uploadResult && uploadResult.url ? uploadResult.url : (uploadResult || '');
+      photoUrl = await api.resolveImageUrlForDisplay(photoFileId);
     } catch (err) {
       console.error('上传照片失败:', err);
       wx.showToast({ title: '照片上传失败，请重试', icon: 'none' });
       return;
     }
-    this.setData({ afterPhoto: photoUrl, showExtraFee: true });
+    this.setData({ afterPhoto: photoUrl, afterPhotoFileId: photoFileId, showExtraFee: true });
   },
 
   takePhoto(type) {
@@ -346,7 +368,7 @@ Page({
       const other_fee = parseFloat(this.data.otherFee) || 0;
       const payload = {
         progress: 'completed',
-        after_photo: this.data.afterPhoto,
+        after_photo: this.data.afterPhotoFileId || this.data.afterPhoto,
         highway_fee,
         parking_fee,
         other_fee,
@@ -360,9 +382,12 @@ Page({
       });
       this.updateStepIndex();
       if (this.data.order) {
-        this.setData({ 'order.status': 'completed' });
+        this.setData({
+          'order.status': 'completed',
+          'order.settlement_status': 'pending'
+        });
       }
-      wx.showToast({ title: '订单已完成', icon: 'success' });
+      wx.showToast({ title: '已提交，等待用户支付', icon: 'none' });
       // 恢复司机在线
       try {
         const token = wx.getStorageSync('uni_token') || wx.getStorageSync('token') || '';
@@ -398,13 +423,14 @@ Page({
   },
 
   onBack() {
-    wx.navigateBack({
-      fail: () => {
-        wx.switchTab({
-          url: '/pages/home-driver/home-driver',
-          fail: () => wx.reLaunch({ url: '/pages/home-driver/home-driver' })
-        });
-      }
+    const pages = getCurrentPages();
+    if (pages.length > 1) {
+      wx.navigateBack();
+      return;
+    }
+    wx.switchTab({
+      url: '/pages/home-driver/home-driver',
+      fail: () => wx.reLaunch({ url: '/pages/home-driver/home-driver' })
     });
   },
 

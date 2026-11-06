@@ -1,6 +1,8 @@
 const express = require('express');
 const db = require('../db');
 const dispatch = require('../utils/order_dispatch');
+const settlement = require('../utils/order_settlement');
+const locationPricing = require('../utils/location_pricing');
 
 module.exports = function(jwt, JWT_SECRET, authMiddleware) {
   const router = express.Router();
@@ -62,12 +64,62 @@ module.exports = function(jwt, JWT_SECRET, authMiddleware) {
     const driver = db.prepare('SELECT * FROM drivers WHERE id = ?').get(req.user.id);
     if (!driver) return res.json({ code: 1, message: '司机不存在' });
     const commissionRate = parseFloat(db.getConfig('commission_rate', '0.2'));
-    res.json({ code: 0, data: { ...driver, commission_rate: commissionRate } });
+    const levels = [...(db.data.driver_levels || [])].sort((a, b) => Number(a.id) - Number(b.id));
+    const level = levels.find(item => Number(item.id) === Number(driver.level_id)) || levels[0] || {};
+    const nextLevel = levels.find(item => Number(item.id) > Number(level.id)) || null;
+    res.json({
+      code: 0,
+      data: {
+        ...driver,
+        commission_rate: commissionRate,
+        level_info: level,
+        next_level: nextLevel,
+        accept_count_7d: dispatch.getAcceptCount7d(driver.id)
+      }
+    });
+  });
+
+  // 更新在线状态
+  router.post('/location', authMiddleware, (req, res) => {
+    if (req.user.role !== 'driver') {
+      return res.status(403).json({ code: 403, message: '仅司机可上报位置' });
+    }
+    const location = locationPricing.normalizeLocation(
+      req.body.latitude != null ? req.body.latitude : req.body.lat,
+      req.body.longitude != null ? req.body.longitude : req.body.lng
+    );
+    if (!location) return res.json({ code: 1, message: '定位坐标无效' });
+    const accuracy = Number(req.body.accuracy);
+    const driver = db.prepare('SELECT * FROM drivers WHERE id = ?').get(req.user.id);
+    if (!driver) return res.json({ code: 1, message: '司机不存在' });
+    driver.lat = location.lat;
+    driver.lng = location.lng;
+    driver.location_accuracy = Number.isFinite(accuracy) && accuracy >= 0 ? accuracy : null;
+    driver.location_updated_at = db.now();
+    db.save();
+    res.json({
+      code: 0,
+      message: '当前位置已更新',
+      data: {
+        lat: driver.lat,
+        lng: driver.lng,
+        accuracy: driver.location_accuracy,
+        updated_at: driver.location_updated_at
+      }
+    });
   });
 
   // 更新在线状态
   router.post('/status', authMiddleware, (req, res) => {
     const { status } = req.body; // online/offline/busy
+    if (!['online', 'offline', 'busy'].includes(status)) {
+      return res.json({ code: 1, message: '司机状态无效' });
+    }
+    const driver = db.prepare('SELECT * FROM drivers WHERE id = ?').get(req.user.id);
+    if (!driver) return res.json({ code: 1, message: '司机不存在' });
+    if (status === 'online' && !locationPricing.hasFreshDriverLocation(driver)) {
+      return res.json({ code: 1, message: '请先授权定位并上报当前位置后再上线' });
+    }
     db.prepare('UPDATE drivers SET status = ? WHERE id = ?').run(status, req.user.id);
     res.json({ code: 0, message: '状态已更新' });
   });
@@ -109,7 +161,7 @@ module.exports = function(jwt, JWT_SECRET, authMiddleware) {
   });
 
   // 司机接单
-  router.post('/accept/:orderId', authMiddleware, (req, res) => {
+  router.post('/accept/:orderId', authMiddleware, async (req, res) => {
     const { orderId } = req.params;
     const driver = db.prepare('SELECT * FROM drivers WHERE id = ?').get(req.user.id);
     if (!driver || !driver.approved) {
@@ -124,10 +176,16 @@ module.exports = function(jwt, JWT_SECRET, authMiddleware) {
       return res.json({ code: 1, message: '订单不存在或已被接单' });
     }
 
-    // ===== 需求5：如果用户没付押金，司机接单提示（但不阻止极端场景）=====
     if (order.deposit_status !== 'paid') {
-      // 仍允许接单，但在结果中加个warn字段，司机端展示"用户未付押金，可能逃单"
+      return res.json({ code: 1, message: '用户尚未支付押金，该订单暂不能接单' });
     }
+    let pricingResult;
+    try {
+      pricingResult = await locationPricing.applyAssignedDriverPricing(order, driver);
+    } catch (error) {
+      return res.json({ code: 1, message: error.message || '腾讯地图路线计算失败' });
+    }
+    if (!pricingResult.ok) return res.json({ code: 1, message: pricingResult.message });
     const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
     db.prepare('UPDATE orders SET driver_id = ?, status = ?, start_time = ? WHERE id = ?')
       .run(req.user.id, 'accepted', now, orderId);
@@ -135,10 +193,7 @@ module.exports = function(jwt, JWT_SECRET, authMiddleware) {
     // ===== 需求3：饥饿式派单计数器，7日接单+1 =====
     dispatch.incrementAcceptCount(req.user.id);
 
-    res.json({
-      code: 0, message: '接单成功',
-      warn: order.deposit_status !== 'paid' ? '用户尚未支付押金，服务完成后注意提醒用户支付尾款' : undefined
-    });
+    res.json({ code: 0, message: '接单成功' });
   });
 
   // 更新订单状态（出发/到达/开始充电/结束充电/完成）
@@ -230,22 +285,31 @@ module.exports = function(jwt, JWT_SECRET, authMiddleware) {
     const values = Object.values(updates);
     if (setClauses) db.prepare(`UPDATE orders SET ${setClauses} WHERE id = ?`).run(...values, orderId);
 
-    // 如果订单完成，更新司机统计和钱包
+    // 服务完成只生成待结算收入；用户确认并支付尾款后才进入钱包。
     if (status === 'completed') {
-      const finalTotal = updates.total_price !== undefined ? Number(updates.total_price) : Number(order.total_price) || 0;
-      const commissionRate = parseFloat(db.getConfig('commission_rate', '0.2'));
-      const driverRate = 1 - commissionRate;
-      const driverIncome = Math.round(finalTotal * driverRate * 100) / 100;
-      const platformIncome = Math.round(finalTotal * commissionRate * 100) / 100;
-      db.prepare('UPDATE orders SET driver_income = ?, platform_income = ? WHERE id = ?').run(driverIncome, platformIncome, orderId);
-      db.prepare('UPDATE drivers SET total_orders = total_orders + 1, total_earnings = total_earnings + ?, wallet_balance = wallet_balance + ?, status = ? WHERE id = ?').run(driverIncome, driverIncome, 'online', req.user.id);
+      const storedOrder = (db.data.orders || []).find(item => Number(item.id) === Number(orderId));
+      settlement.markPending(storedOrder);
+      db.prepare('UPDATE drivers SET total_orders = total_orders + 1, status = ? WHERE id = ?')
+        .run('online', req.user.id);
+      db.save();
       try { dispatch.updateDriverLevelAfterOrder(req.user.id); } catch(e) { /* 升级失败不影响流程 */ }
     } else if (status === 'cancelled') {
       // 取消后：司机恢复 online，订单押金状态若已付则保留（由管理员退）
       db.prepare("UPDATE drivers SET status = 'online' WHERE id = ?").run(req.user.id);
     }
 
-    res.json({ code: 0, message: '状态已更新为：' + (STATUS_CN[status] || status), data: { status, status_cn: STATUS_CN[status] || status } });
+    const message = status === 'completed'
+      ? '服务已提交，等待用户确认并支付尾款'
+      : '状态已更新为：' + (STATUS_CN[status] || status);
+    res.json({
+      code: 0,
+      message,
+      data: {
+        status,
+        status_cn: STATUS_CN[status] || status,
+        settlement_status: status === 'completed' ? 'pending' : undefined
+      }
+    });
   });
 
   // 司机订单历史
@@ -270,44 +334,64 @@ module.exports = function(jwt, JWT_SECRET, authMiddleware) {
   router.get('/earnings', authMiddleware, (req, res) => {
     const today = new Date().toISOString().substring(0, 10);
     const thisMonth = today.substring(0, 7);
-    const commissionRate = parseFloat(db.getConfig('commission_rate', '0.2'));
-    const driverRate = 1 - commissionRate;
-
-    const todayEarnings = db.prepare(`
-      SELECT COUNT(*) as count, SUM(total_price) as total_amount
-      FROM orders WHERE driver_id = ? AND status = 'completed' AND DATE(complete_time) = ?
-    `).get(req.user.id, today);
-
-    const monthEarnings = db.prepare(`
-      SELECT COUNT(*) as count, SUM(total_price) as total_amount
-      FROM orders WHERE driver_id = ? AND status = 'completed' AND complete_time LIKE ?
-    `).get(req.user.id, thisMonth + '%');
+    const settledOrders = (db.data.orders || []).filter(order =>
+      Number(order.driver_id) === Number(req.user.id) &&
+      order.status === 'completed' &&
+      order.payment_status === 'paid' &&
+      order.settlement_status === 'settled'
+    );
+    const summarize = list => ({
+      count: list.length,
+      earnings: Math.round(list.reduce((sum, order) => sum + Number(order.driver_income || 0), 0) * 100) / 100
+    });
+    const todayEarnings = summarize(settledOrders.filter(order => String(order.settled_at || '').startsWith(today)));
+    const monthEarnings = summarize(settledOrders.filter(order => String(order.settled_at || '').startsWith(thisMonth)));
+    const pendingEarnings = Math.round((db.data.orders || [])
+      .filter(order =>
+        Number(order.driver_id) === Number(req.user.id) &&
+        order.status === 'completed' &&
+        order.settlement_status === 'pending'
+      )
+      .reduce((sum, order) => sum + Number(order.driver_income || 0), 0) * 100) / 100;
 
     const driver = db.prepare('SELECT total_orders, total_earnings, wallet_balance FROM drivers WHERE id = ?').get(req.user.id);
 
     res.json({
       code: 0,
       data: {
-        today: { orders: todayEarnings.count || 0, earnings: Math.round((todayEarnings.total_amount || 0) * driverRate * 100) / 100 },
-        month: { orders: monthEarnings.count || 0, earnings: Math.round((monthEarnings.total_amount || 0) * driverRate * 100) / 100 },
-        total: { orders: driver?.total_orders || 0, earnings: driver?.total_earnings || 0 },
-        wallet_balance: driver?.wallet_balance || 0
+        today: { orders: todayEarnings.count, earnings: todayEarnings.earnings },
+        month: { orders: monthEarnings.count, earnings: monthEarnings.earnings },
+        total: {
+          orders: settledOrders.length,
+          earnings: Math.round(Number(driver?.total_earnings || 0) * 100) / 100
+        },
+        completed_orders: Number(driver?.total_orders || 0),
+        pending_earnings: pendingEarnings,
+        wallet_balance: Math.round(Number(driver?.wallet_balance || 0) * 100) / 100
       }
     });
   });
 
   // 司机钱包 - 获取余额和提现记录
   router.get('/wallet', authMiddleware, (req, res) => {
+    if (req.user.role !== 'driver') {
+      return res.status(403).json({ code: 403, message: '仅司机可查看钱包' });
+    }
     const driver = db.prepare('SELECT wallet_balance, total_earnings FROM drivers WHERE id = ?').get(req.user.id);
     if (!driver) return res.json({ code: 1, message: '司机不存在' });
     
     const withdrawals = (db.data.withdrawals || []).filter(w => w.driver_id === req.user.id);
+    const pendingAmount = withdrawals
+      .filter(w => w.status === 'pending')
+      .reduce((sum, w) => sum + Number(w.amount || 0), 0);
     
     res.json({
       code: 0,
       data: {
-        balance: driver.wallet_balance || 0,
-        total_earnings: driver.total_earnings || 0,
+        balance: Math.round(Number(driver.wallet_balance || 0) * 100) / 100,
+        frozen_amount: Math.round(pendingAmount * 100) / 100,
+        total_earnings: Math.round(Number(driver.total_earnings || 0) * 100) / 100,
+        min_withdraw_amount: Number(db.getConfig('min_withdraw_amount', '10')),
         withdrawals: withdrawals.sort((a, b) => b.id - a.id)
       }
     });
@@ -315,12 +399,16 @@ module.exports = function(jwt, JWT_SECRET, authMiddleware) {
 
   // 司机钱包 - 申请提现
   router.post('/withdraw', authMiddleware, (req, res) => {
-    const { amount, type, account } = req.body;
+    if (req.user.role !== 'driver') {
+      return res.status(403).json({ code: 403, message: '仅司机可申请提现' });
+    }
+    const { amount, type, account, account_name } = req.body;
     const driver = db.prepare('SELECT * FROM drivers WHERE id = ?').get(req.user.id);
     if (!driver) return res.json({ code: 1, message: '司机不存在' });
 
-    const withdrawAmount = Number(amount);
-    if (!withdrawAmount || withdrawAmount <= 0) {
+    const rawAmount = Number(amount);
+    const withdrawAmount = Math.round(rawAmount * 100) / 100;
+    if (!Number.isFinite(rawAmount) || withdrawAmount <= 0 || Math.abs(rawAmount - withdrawAmount) > 0.000001) {
       return res.json({ code: 1, message: '提现金额无效' });
     }
 
@@ -333,26 +421,51 @@ module.exports = function(jwt, JWT_SECRET, authMiddleware) {
       return res.json({ code: 1, message: '余额不足' });
     }
 
-    // 扣减余额
-    db.prepare('UPDATE drivers SET wallet_balance = wallet_balance - ? WHERE id = ?')
-      .run(withdrawAmount, req.user.id);
+    const withdrawType = String(type || 'wechat');
+    if (!['wechat', 'alipay', 'bank'].includes(withdrawType)) {
+      return res.json({ code: 1, message: '不支持的收款方式' });
+    }
+    const withdrawAccount = String(account || '').trim();
+    const accountName = String(account_name || '').trim();
+    if (accountName.length < 2 || accountName.length > 30) {
+      return res.json({ code: 1, message: '请填写正确的收款人姓名' });
+    }
+    if (withdrawAccount.length < 4 || withdrawAccount.length > 64) {
+      return res.json({ code: 1, message: '请填写正确的收款账号' });
+    }
+
+    // 提交时冻结资金：从可提现余额扣除；拒绝后自动退回。
+    driver.wallet_balance = Math.round((Number(driver.wallet_balance || 0) - withdrawAmount) * 100) / 100;
 
     // 创建提现记录
     const withdrawId = db.nextId('withdrawals');
-    db.data.withdrawals.push({
+    const withdrawal = {
       id: withdrawId,
       driver_id: req.user.id,
       driver_name: driver.name,
       driver_phone: driver.phone,
       amount: withdrawAmount,
-      type: type || 'wechat',
-      account: account || '',
+      type: withdrawType,
+      account: withdrawAccount,
+      account_name: accountName,
       status: 'pending',
+      review_remark: '',
+      payment_reference: '',
+      processed_by: null,
+      processed_at: null,
       created_at: db.now()
-    });
+    };
+    db.data.withdrawals.push(withdrawal);
     db.save();
 
-    res.json({ code: 0, message: '提现申请已提交，请等待审核' });
+    res.json({
+      code: 0,
+      message: '提现申请已提交，请等待审核',
+      data: {
+        withdrawal,
+        balance: driver.wallet_balance
+      }
+    });
   });
 
   return router;

@@ -1,4 +1,9 @@
 {
+  "networkTimeout": {
+    "request": 15000,
+    "uploadFile": 30000,
+    "downloadFile": 30000
+  },
   "pages": [
     "pages/auth-entry/auth-entry",
     "pages/home-user/home-user",

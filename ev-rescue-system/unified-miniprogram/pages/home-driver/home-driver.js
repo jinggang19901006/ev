@@ -10,30 +10,40 @@ Page({
     toggling: false,
     statusBarHeight: 20,
     navBarHeight: 44,
+    navRightPadding: 16,
     driver: null,
     isLoggedIn: false,
     notApproved: false,
     acceptingId: '',
+    confirmingId: '',
     activeOrder: null
   },
 
   refreshTimer: null,
+  locationTimer: null,
 
   onLoad() {
     try {
       const g = app.globalData || {};
       const statusBarHeight = g.statusBarHeight || 20;
-      const menuButton = g.menuButton || wx.getMenuButtonBoundingClientRect ? wx.getMenuButtonBoundingClientRect() : {};
+      const menuButton = wx.getMenuButtonBoundingClientRect
+        ? wx.getMenuButtonBoundingClientRect()
+        : {};
+      const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
       const navBarHeight = menuButton && menuButton.height
         ? (menuButton.top - statusBarHeight) * 2 + menuButton.height
         : 44;
-      this.setData({ statusBarHeight, navBarHeight });
+      const navRightPadding = menuButton && menuButton.left
+        ? Math.max(16, windowInfo.windowWidth - menuButton.left + 10)
+        : 16;
+      this.setData({ statusBarHeight, navBarHeight, navRightPadding });
     } catch (e) {
-      this.setData({ statusBarHeight: 20, navBarHeight: 44 });
+      this.setData({ statusBarHeight: 20, navBarHeight: 44, navRightPadding: 16 });
     }
   },
 
   async onShow() {
+    app.syncTabBar(this);
     const token = (app.globalData && app.globalData.token)
       || wx.getStorageSync('uni_token')
       || wx.getStorageSync('token') || '';
@@ -84,6 +94,14 @@ Page({
       if (!approved) return;
 
       if (serverStatus === 'online') {
+        const locationReady = await this.reportCurrentLocation(false);
+        if (!locationReady) {
+          try { await api.driver.updateStatus('offline'); } catch (e) {}
+          this.setData({ driverStatus: 'offline', orders: [] });
+          this.updateAppStatus('offline');
+          wx.showToast({ title: '定位失败，已自动下线', icon: 'none' });
+          return;
+        }
         this.loadOrders();
         this.startAutoRefresh();
       } else if (serverStatus === 'busy') {
@@ -103,8 +121,14 @@ Page({
     }
   },
 
-  onHide() { this.stopAutoRefresh(); },
-  onUnload() { this.stopAutoRefresh(); },
+  onHide() {
+    this.stopAutoRefresh();
+    this.stopLocationRefresh();
+  },
+  onUnload() {
+    this.stopAutoRefresh();
+    this.stopLocationRefresh();
+  },
 
   async loadActiveOrder() {
     try {
@@ -189,6 +213,8 @@ Page({
       vehicleModel,
       plateNumber: order.vehicle_plate || order.plateNumber || order.plate_number || order.licensePlate || '',
       address: order.pickup_address || order.address || order.location || order.pickupAddress || '未知地址',
+      latitude: Number(order.pickup_lat != null ? order.pickup_lat : (order.latitude != null ? order.latitude : order.lat)) || 0,
+      longitude: Number(order.pickup_lng != null ? order.pickup_lng : (order.longitude != null ? order.longitude : order.lng)) || 0,
       distance: dn > 0 ? dn + 'km' : '--',
       price: pn,
       batteryLevel: order.battery_percent != null ? order.battery_percent : (order.batteryLevel || order.battery_level || order.soc || ''),
@@ -236,6 +262,7 @@ Page({
 
   startAutoRefresh() {
     this.stopAutoRefresh();
+    this.startLocationRefresh();
     this.refreshTimer = setInterval(() => {
       if (this.data.driverStatus === 'online' && !this.data.acceptingId) {
         this.loadOrders();
@@ -247,6 +274,50 @@ Page({
     if (this.refreshTimer) {
       clearInterval(this.refreshTimer);
       this.refreshTimer = null;
+    }
+  },
+
+  startLocationRefresh() {
+    this.stopLocationRefresh();
+    this.locationTimer = setInterval(() => {
+      if (this.data.driverStatus === 'online') this.reportCurrentLocation(false);
+    }, 60000);
+  },
+
+  stopLocationRefresh() {
+    if (this.locationTimer) {
+      clearInterval(this.locationTimer);
+      this.locationTimer = null;
+    }
+  },
+
+  getCurrentLocation() {
+    return new Promise((resolve, reject) => {
+      wx.getLocation({
+        type: 'gcj02',
+        isHighAccuracy: true,
+        highAccuracyExpireTime: 5000,
+        success: resolve,
+        fail: reject
+      });
+    });
+  },
+
+  async reportCurrentLocation(showError = true) {
+    try {
+      const location = await this.getCurrentLocation();
+      await api.driver.updateLocation({
+        latitude: location.latitude,
+        longitude: location.longitude,
+        accuracy: location.accuracy
+      });
+      return true;
+    } catch (error) {
+      console.error('report location fail', error);
+      if (showError) {
+        wx.showToast({ title: '请授权定位后再上线', icon: 'none' });
+      }
+      return false;
     }
   },
 
@@ -262,6 +333,10 @@ Page({
     this.setData({ toggling: true });
     const newStatus = this.data.driverStatus === 'online' ? 'offline' : 'online';
     try {
+      if (newStatus === 'online') {
+        const locationReady = await this.reportCurrentLocation(true);
+        if (!locationReady) return;
+      }
       await api.driver.updateStatus(newStatus);
       this.setData({ driverStatus: newStatus });
       this.updateAppStatus(newStatus);
@@ -272,6 +347,7 @@ Page({
       } else {
         wx.showToast({ title: '已下线', icon: 'none' });
         this.stopAutoRefresh();
+        this.stopLocationRefresh();
         this.setData({ orders: [] });
       }
     } catch (err) {
@@ -290,8 +366,26 @@ Page({
     wx.stopPullDownRefresh();
   },
 
-  async onAcceptOrder(e) {
+  onAcceptOrder(e) {
     const orderId = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
+    if (!orderId || this.data.acceptingId || this.data.confirmingId) return;
+    const order = this.data.orders.find(item => String(item.id) === String(orderId));
+    this.setData({ confirmingId: orderId });
+    wx.showModal({
+      title: '确认接单',
+      content: order
+        ? `确认接取${order.vehicleModel}的救援订单？\n救援地址：${order.address}`
+        : '确认接取该救援订单？',
+      confirmText: '确认接单',
+      confirmColor: '#f59e0b',
+      success: (res) => {
+        if (res.confirm) this.acceptOrder(orderId);
+      },
+      complete: () => this.setData({ confirmingId: '' })
+    });
+  },
+
+  async acceptOrder(orderId) {
     if (!orderId || this.data.acceptingId) return;
     this.setData({ acceptingId: orderId });
     try {
@@ -304,8 +398,10 @@ Page({
         wx.navigateTo({
           url: '/pages/detail-driver/detail-driver?id=' + orderId,
           fail: () => {
-            // fallback: old detail path
-            wx.navigateTo({ url: '/pages/detail/detail?id=' + orderId, fail: () => {} });
+            wx.switchTab({
+              url: '/pages/home-driver/home-driver',
+              fail: () => wx.reLaunch({ url: '/pages/home-driver/home-driver' })
+            });
           }
         });
         this.setData({ acceptingId: '' });
@@ -324,14 +420,29 @@ Page({
     try { wx.makePhoneCall({ phoneNumber: phone, fail: () => {} }); } catch (e) {}
   },
 
-  onOrderTap(e) {
+  onViewOrder(e) {
     const orderId = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
     if (!orderId) return;
     wx.navigateTo({
-      url: '/pages/detail-driver/detail-driver?id=' + orderId + '&preview=1',
-      fail: () => {
-        wx.navigateTo({ url: '/pages/detail/detail?id=' + orderId + '&preview=1', fail: () => {} });
-      }
+      url: '/pages/detail-driver/detail-driver?id=' + orderId + '&preview=1'
+    });
+  },
+
+  onNavigate(e) {
+    const orderId = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
+    const order = this.data.orders.find(item => String(item.id) === String(orderId));
+    if (!order) return;
+    if (!order.latitude || !order.longitude) {
+      wx.showToast({ title: '该订单缺少定位坐标', icon: 'none' });
+      return;
+    }
+    wx.openLocation({
+      latitude: order.latitude,
+      longitude: order.longitude,
+      name: '救援地点',
+      address: order.address,
+      scale: 16,
+      fail: () => wx.showToast({ title: '地图打开失败，请检查定位权限', icon: 'none' })
     });
   }
 });

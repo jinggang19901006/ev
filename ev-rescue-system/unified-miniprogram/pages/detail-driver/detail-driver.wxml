@@ -92,11 +92,15 @@
         <view class="divider" wx:if="{{order.address}}"></view>
 
         <!-- 地址 -->
-        <view class="info-row address-row" wx:if="{{order.address}}">
+        <view class="info-row address-row" wx:if="{{order.address}}" bindtap="onNavigate">
           <text class="info-icon">📍</text>
           <view class="address-content">
             <text class="info-key">救援地址</text>
             <text class="address-text-lg">{{order.address}}</text>
+          </view>
+          <view class="detail-nav-btn">
+            <text class="detail-nav-icon">➤</text>
+            <text>导航</text>
           </view>
         </view>
 
@@ -206,7 +210,7 @@
               <text class="photo-label">充电后照片</text>
             </view>
             <button class="btn btn-primary btn-lg action-btn" bindtap="onActionEndCharge" disabled="{{processing}}">
-              {{processing ? '处理中...' : '📷 结束充电并拍照'}}
+              <text class="action-btn-label">{{processing ? '处理中...' : '结束充电并拍照'}}</text>
             </button>
           </view>
         </view>
@@ -215,8 +219,8 @@
       <!-- 已完成状态 -->
       <view wx:if="{{currentStatus === 'completed'}}" class="completed-state">
         <view class="completed-icon">✓</view>
-        <text class="completed-title">订单已完成</text>
-        <text class="completed-desc">感谢您的服务！</text>
+        <text class="completed-title">服务已提交</text>
+        <text class="completed-desc">{{order.settlement_status === 'settled' ? '用户已支付，收入已到账' : '已通知用户确认并支付，支付成功后收入到账'}}</text>
       </view>
 
       <!-- 已取消状态 -->

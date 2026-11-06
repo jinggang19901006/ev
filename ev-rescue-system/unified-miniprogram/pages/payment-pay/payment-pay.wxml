@@ -1,11 +1,11 @@
-<view class="page">
+<view class="page {{stage==='final' && summary && summary.order.payment_status==='paid' ? 'has-rating' : ''}}">
   <view class="head">
     <view class="stage {{stage==='deposit' ? 'on' : ''}}">
       <text class="dot">1</text> 押金 {{stage==='deposit' ? '· 当前' : ''}}
     </view>
     <view class="arrow">→</view>
     <view class="stage {{stage==='final' ? 'on' : ''}}">
-      <text class="dot">2</text> 完成服务 · 尾款 {{stage==='final' ? '· 当前' : ''}}
+      <text class="dot">2</text> 确认服务 · 尾款 {{stage==='final' ? '· 当前' : ''}}
     </view>
   </view>
 
@@ -16,7 +16,13 @@
       <view class="sect-title">订单信息</view>
       <view class="kv"><text>车型</text><text>{{summary.vehicle_size_cn}}</text></view>
       <view class="kv"><text>时段</text><text>{{summary.order.time_type === 'night' ? '夜间(21-08点)' : '日间'}}</text></view>
-      <view class="kv"><text>距离</text><text>{{summary.order.distance_km}} 公里</text></view>
+      <view class="kv">
+        <text>{{summary.order.distance_is_estimate ? '预估距离' : '计价距离'}}</text>
+        <text>{{summary.order.distance_km}} 公里</text>
+      </view>
+      <view class="kv" wx:if="{{summary.order.route_duration_minutes}}">
+        <text>预计驾车时间</text><text>{{summary.order.route_duration_minutes}} 分钟</text>
+      </view>
       <view class="kv"><text>状态</text>
         <text class="st st-{{summary.order.deposit_status}}">押金:{{summary.order.deposit_status==='paid' ? '已支付' : (summary.order.deposit_status==='refunded' ? '已退还' : '待支付')}}</text>
       </view>
@@ -69,6 +75,50 @@
       </view>
     </block>
 
+    <!-- 支付完成后评价司机 -->
+    <view
+      id="ratingSection"
+      class="sect rating-section"
+      wx:if="{{stage==='final' && summary.order.payment_status==='paid'}}"
+    >
+      <view class="rating-head">
+        <view>
+          <view class="rating-title">{{summary.order.user_rating ? '服务评价' : '评价本次救援服务'}}</view>
+          <view class="rating-driver">{{summary.order.driver_name || '救援司机'}} · 评分将参与后续派单</view>
+        </view>
+        <text class="rating-done" wx:if="{{summary.order.user_rating}}">已评价</text>
+      </view>
+      <view class="rating-stars">
+        <text
+          wx:for="{{ratingStars}}"
+          wx:key="*this"
+          class="rating-star {{item <= selectedRating ? 'active' : ''}}"
+          data-rating="{{item}}"
+          bindtap="selectRating"
+        >★</text>
+      </view>
+      <view class="rating-score-text">{{selectedRating ? selectedRating + ' 分' : '请选择1到5星'}}</view>
+      <textarea
+        wx:if="{{!summary.order.user_rating}}"
+        class="rating-comment"
+        maxlength="200"
+        value="{{ratingComment}}"
+        placeholder="可选：说说本次救援服务体验"
+        bindinput="onRatingComment"
+      ></textarea>
+      <view class="rating-count" wx:if="{{!summary.order.user_rating}}">{{ratingComment.length}}/200</view>
+      <view class="rated-comment" wx:if="{{summary.order.user_rating && summary.order.user_comment}}">
+        {{summary.order.user_comment}}
+      </view>
+      <button
+        wx:if="{{!summary.order.user_rating}}"
+        class="rating-submit"
+        loading="{{submittingRating}}"
+        disabled="{{!selectedRating || submittingRating}}"
+        bindtap="submitRating"
+      >提交评价</button>
+    </view>
+
     <!-- 押金已支付态：不可重复支付 -->
     <view wx:if="{{stage==='deposit' && summary.order.deposit_status==='paid'}}" class="pay-btn">
       <view class="paid-box">
@@ -92,7 +142,7 @@
     <!-- 待支付态 -->
     <view wx:else class="pay-btn">
       <button class="btn primary" loading="{{paying}}" bindtap="{{stage === 'deposit' ? 'payDeposit' : 'payFinal'}}">
-        确认{{stage==='deposit' ? '支付押金' : '支付尾款'}}
+        {{stage==='deposit' ? '确认支付押金' : '确认服务并支付尾款'}}
       </button>
       <view class="hint">开发环境：点击即 mock 支付；上线切微信支付/支付宝需配置商户号。逃单将影响信用并扣30积分。</view>
     </view>

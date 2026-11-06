@@ -112,6 +112,25 @@
   margin-left: 8rpx;
 }
 
+.driver-level-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 6rpx 14rpx;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2rpx solid;
+  border-radius: 16rpx;
+}
+
+.driver-level-tag text {
+  color: var(--color-text-secondary);
+  font-size: 22rpx;
+}
+
+.driver-level-tag text:first-child {
+  font-weight: 800;
+}
+
 .tag-dot {
   width: 10rpx;
   height: 10rpx;
@@ -304,6 +323,132 @@
   margin: 0 24rpx 24rpx;
 }
 
+/* ===== 司机服务等级 ===== */
+.driver-level-section {
+  padding-top: 8rpx;
+  padding-bottom: 8rpx;
+}
+
+.driver-level-panel {
+  padding: 28rpx;
+  border: 2rpx solid rgba(15, 23, 42, 0.08);
+  border-radius: 16rpx;
+  color: #0f172a;
+  box-shadow: 0 10rpx 30rpx rgba(15, 23, 42, 0.08);
+}
+
+.driver-level-head,
+.driver-level-identity,
+.driver-level-stats {
+  display: flex;
+  align-items: center;
+}
+
+.driver-level-head {
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.driver-level-identity {
+  min-width: 0;
+  gap: 18rpx;
+}
+
+.driver-level-code {
+  width: 82rpx;
+  height: 64rpx;
+  border-radius: 12rpx;
+  color: #ffffff;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 64rpx;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.driver-level-name,
+.driver-level-next {
+  display: block;
+}
+
+.driver-level-name {
+  color: #0f172a;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.driver-level-next {
+  max-width: 400rpx;
+  margin-top: 5rpx;
+  color: #475569;
+  font-size: 21rpx;
+  line-height: 1.45;
+}
+
+.driver-level-factor {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.driver-level-factor text:first-child {
+  color: #64748b;
+  font-size: 20rpx;
+}
+
+.driver-level-factor text:last-child {
+  margin-top: 2rpx;
+  color: #0f172a;
+  font-size: 32rpx;
+  font-weight: 800;
+}
+
+.driver-level-progress {
+  height: 10rpx;
+  margin: 26rpx 0 22rpx;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.12);
+  border-radius: 5rpx;
+}
+
+.driver-level-progress-bar {
+  height: 100%;
+  min-width: 8rpx;
+  border-radius: 5rpx;
+  transition: width 0.35s ease;
+}
+
+.driver-level-stats {
+  justify-content: space-between;
+}
+
+.driver-level-stats view {
+  width: 33.333%;
+  text-align: center;
+  border-right: 2rpx solid rgba(15, 23, 42, 0.1);
+}
+
+.driver-level-stats view:last-child {
+  border-right: 0;
+}
+
+.driver-level-stats text {
+  display: block;
+}
+
+.driver-level-stats text:first-child {
+  color: #0f172a;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.driver-level-stats text:last-child {
+  margin-top: 3rpx;
+  color: #64748b;
+  font-size: 20rpx;
+}
+
 .section-header {
   display: flex;
   align-items: center;
@@ -323,155 +468,290 @@
   color: var(--color-text-muted);
 }
 
-/* ===== 服务卡 ===== */
-.cards-list {
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
-}
-
-.service-card {
-  background: linear-gradient(135deg, #112441 0%, #0d1b2e 100%);
+/* ===== 司机钱包与提现 ===== */
+.wallet-card {
+  padding: 34rpx 32rpx 28rpx;
+  border: 1rpx solid rgba(16, 185, 129, 0.28);
   border-radius: var(--radius-lg);
-  padding: 32rpx;
-  border: 1rpx solid var(--color-border);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), #0d1b2e 62%);
   box-shadow: var(--shadow-card);
-  position: relative;
-  overflow: hidden;
 }
 
-.service-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4rpx;
-  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
-}
-
-.card-top {
+.wallet-head,
+.wallet-balance,
+.wallet-meta,
+.withdraw-record,
+.withdraw-record-top,
+.withdraw-modal-head,
+.withdraw-balance-tip,
+.withdraw-amount-input,
+.withdraw-picker {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24rpx;
 }
 
-.card-type {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.card-type-icon {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 12rpx;
-  background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(16, 185, 129, 0.2));
-  border: 2rpx solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28rpx;
-  font-weight: 700;
-  color: var(--color-primary);
-}
-
-.card-type-name {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.card-status {
-  padding: 6rpx 20rpx;
-  border-radius: 20rpx;
-  font-size: 22rpx;
-  font-weight: 600;
-}
-
-.card-status.unused {
-  background: rgba(16, 185, 129, 0.15);
-  color: var(--color-success);
-  border: 1rpx solid rgba(16, 185, 129, 0.3);
-}
-
-.card-status.used {
-  background: rgba(139, 152, 122, 0.1);
-  color: var(--color-text-muted);
-  border: 1rpx solid var(--color-border);
-}
-
-.card-status.expired {
-  background: rgba(239, 68, 68, 0.15);
-  color: var(--color-danger);
-  border: 1rpx solid rgba(239, 68, 68, 0.3);
-}
-
-.card-bottom {
-  display: flex;
-  align-items: flex-end;
+.wallet-head,
+.withdraw-record,
+.withdraw-modal-head,
+.withdraw-balance-tip,
+.withdraw-picker {
   justify-content: space-between;
 }
 
-.card-info {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-}
-
-.card-no {
-  font-size: 24rpx;
-  color: var(--color-text-muted);
-}
-
-.card-uses {
-  font-size: 26rpx;
+.wallet-label {
+  display: block;
   color: var(--color-text-secondary);
+  font-size: 24rpx;
 }
 
-.card-price {
-  display: flex;
+.wallet-balance {
+  margin-top: 6rpx;
   align-items: baseline;
 }
 
-.price-num {
-  font-size: 44rpx;
+.wallet-symbol {
+  margin-right: 6rpx;
+  color: #6ee7b7;
+  font-size: 30rpx;
   font-weight: 700;
-  color: var(--color-primary);
 }
 
-.price-unit {
+.wallet-value {
+  color: #ecfdf5;
+  font-size: 58rpx;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.wallet-withdraw-btn {
+  height: 68rpx;
+  margin: 0;
+  padding: 0 28rpx;
+  border: none;
+  border-radius: 34rpx;
+  background: #10b981;
+  color: #062c22;
+  font-size: 25rpx;
+  font-weight: 700;
+  line-height: 68rpx;
+}
+
+.wallet-withdraw-btn::after,
+.withdraw-submit::after {
+  border: none;
+}
+
+.wallet-meta {
+  flex-wrap: wrap;
+  gap: 10rpx 24rpx;
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid rgba(110, 231, 183, 0.15);
+}
+
+.wallet-meta text {
+  color: #7d948d;
+  font-size: 22rpx;
+}
+
+.withdraw-history {
+  margin-top: 18rpx;
+  overflow: hidden;
+  border: 1rpx solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(13, 27, 46, 0.72);
+}
+
+.withdraw-history-title {
+  padding: 20rpx 24rpx 14rpx;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
-  color: var(--color-text-muted);
-  margin-left: 4rpx;
+  font-weight: 600;
 }
 
-.empty-cards {
+.withdraw-record {
+  min-height: 100rpx;
+  padding: 18rpx 24rpx;
+  border-top: 1rpx solid var(--color-border);
+}
+
+.withdraw-record-main {
   display: flex;
+  min-width: 0;
+  flex: 1;
   flex-direction: column;
+}
+
+.withdraw-record-top {
+  gap: 12rpx;
+  align-self: flex-start;
+}
+
+.withdraw-record-type {
+  color: var(--color-text);
+  font-size: 25rpx;
+  font-weight: 600;
+}
+
+.withdraw-status {
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  font-size: 19rpx;
+}
+
+.status-pending { background: rgba(245, 158, 11, 0.14); color: #fbbf24; }
+.status-paid { background: rgba(16, 185, 129, 0.14); color: #34d399; }
+.status-rejected { background: rgba(239, 68, 68, 0.14); color: #f87171; }
+
+.withdraw-record-time,
+.withdraw-record-remark {
+  margin-top: 4rpx;
+  color: var(--color-text-muted);
+  font-size: 21rpx;
+}
+
+.withdraw-record-remark {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.withdraw-record-amount {
+  margin-left: 20rpx;
+  color: var(--color-text);
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.withdraw-modal-mask {
+  position: fixed;
+  z-index: 1100;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 60rpx 0;
+  padding: 32rpx;
+  background: rgba(0, 0, 0, 0.72);
 }
 
-.empty-icon-small {
-  width: 80rpx;
-  height: 80rpx;
-  border: 4rpx dashed var(--color-border);
-  border-radius: 20rpx;
-  margin-bottom: 16rpx;
+.withdraw-modal {
+  width: 100%;
+  max-width: 640rpx;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 38rpx 36rpx 36rpx;
+  border: 1rpx solid var(--color-border);
+  border-radius: 28rpx;
+  background: #10213a;
+  box-shadow: 0 20rpx 70rpx rgba(0, 0, 0, 0.55);
+  animation: modalSlideIn 300ms cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-.empty-text-small {
-  font-size: 26rpx;
+.withdraw-modal-head {
+  margin-bottom: 28rpx;
+}
+
+.withdraw-modal-title,
+.withdraw-modal-sub {
+  display: block;
+}
+
+.withdraw-modal-title {
+  color: var(--color-text);
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.withdraw-modal-sub {
+  margin-top: 4rpx;
   color: var(--color-text-muted);
+  font-size: 21rpx;
+}
+
+.withdraw-close {
+  width: 56rpx;
+  height: 56rpx;
+  padding: 12rpx;
+  flex-shrink: 0;
+}
+
+.withdraw-balance-tip {
+  margin-bottom: 28rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 12rpx;
+  background: rgba(16, 185, 129, 0.1);
+  color: #6ee7b7;
+  font-size: 24rpx;
+}
+
+.withdraw-amount-input,
+.withdraw-picker {
+  width: 100%;
+  height: 88rpx;
+  padding: 0 24rpx;
+  border: 2rpx solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.withdraw-currency {
+  margin-right: 10rpx;
+  color: var(--color-text);
+  font-size: 34rpx;
+}
+
+.withdraw-amount-input input {
+  min-width: 0;
+  flex: 1;
+  color: var(--color-text);
+  font-size: 34rpx;
+}
+
+.withdraw-all {
+  padding: 14rpx 0 14rpx 20rpx;
+  color: var(--color-primary);
+  font-size: 25rpx;
+}
+
+.withdraw-picker {
+  color: var(--color-text);
+  font-size: 28rpx;
+}
+
+.withdraw-picker-arrow {
+  color: var(--color-text-muted);
+  font-size: 36rpx;
+}
+
+.withdraw-submit {
+  width: 100%;
+  height: 88rpx;
+  margin: 10rpx 0 0;
+  border-radius: 18rpx;
+  background: #10b981;
+  color: #062c22;
+  font-size: 29rpx;
+  font-weight: 700;
+  line-height: 88rpx;
+}
+
+.withdraw-submit[disabled] {
+  opacity: 0.55;
 }
 
 /* ===== 司机收入统计 ===== */
 .earn-switch {
   color: var(--color-warning);
   font-size: 24rpx;
+}
+
+.settlement-pending {
+  color: #fbbf24;
+  font-size: 22rpx;
+  font-weight: 600;
 }
 
 .earnings-grid {
@@ -543,10 +823,14 @@
 }
 
 .earn-value {
+  min-width: 0;
+  max-width: 100%;
   font-size: 52rpx;
   font-weight: 700;
   color: var(--color-text);
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .earn-sub {

@@ -4,6 +4,8 @@ const { generateOrderNo, calculatePrice } = require('../utils/pricing');
 const helpers = require('../utils/helpers');
 const dispatch = require('../utils/order_dispatch');
 const pricing = require('../utils/pricing');
+const settlement = require('../utils/order_settlement');
+const locationPricing = require('../utils/location_pricing');
 
 module.exports = function(authMiddleware, upload) {
   const router = express.Router();
@@ -42,7 +44,10 @@ module.exports = function(authMiddleware, upload) {
       status_cn: STATUS_CN[statusRaw] || statusRaw,
       deposit_status_cn: DEPOSIT_CN[depositStatus] || depositStatus,
       payment_status_cn: PAYMENT_CN[paymentStatus] || paymentStatus,
-      status_line: statusLine
+      status_line: statusLine,
+      distance_km: Number(o.distance_km || 0),
+      distance_source: o.distance_source || 'unavailable',
+      distance_is_estimate: Number(o.distance_is_estimate || 0)
     };
   }
 
@@ -67,7 +72,7 @@ module.exports = function(authMiddleware, upload) {
   }
 
   // 用户创建订单
-  router.post('/create', authMiddleware, (req, res) => {
+  router.post('/create', authMiddleware, async (req, res) => {
     req.body = normalizeOrderBody(req.body);
     const {
       vehicleType,     // small/medium/large
@@ -78,12 +83,12 @@ module.exports = function(authMiddleware, upload) {
       pickupLng,
       pickupAddress,
       pickupDescription,
-      distanceKm,
       extraFee         // 预估额外费用
     } = req.body;
 
-    if (!vehicleType || !pickupAddress) {
-      return res.json({ code: 1, message: '请选择车型并填写救援地址' });
+    const pickupLocation = locationPricing.normalizeLocation(pickupLat, pickupLng);
+    if (!vehicleType || !pickupAddress || !pickupLocation) {
+      return res.json({ code: 1, message: '请选择车型并通过地图选择准确的救援位置' });
     }
 
     // ===== 需求5：信用积分拦截 + 逃单记录拦截（不满足不能下单）=====
@@ -92,10 +97,31 @@ module.exports = function(authMiddleware, upload) {
       return res.json({ code: 4025, message: uChk.reason, data: { credit_score: uChk.score } });
     }
 
-    // 计算价格
+    const settings = dispatch.readSettings();
+    let nearest;
+    try {
+      nearest = await locationPricing.findNearestAvailableDriver(
+        pickupLocation.lat,
+        pickupLocation.lng,
+        {
+          maxDistanceKm: settings.maxDistanceKm,
+          maxCandidates: settings.maxCandidates,
+          allowBusy: settings.allowBusy
+        }
+      );
+    } catch (error) {
+      return res.json({ code: 1, message: error.message || '腾讯地图路线计算失败' });
+    }
+    if (!nearest) {
+      return res.json({ code: 1, message: '当前调度范围内没有已定位的在线司机，请稍后再试' });
+    }
+    const distanceKm = nearest.distanceKm;
+    const safeExtraFee = Math.max(0, Math.min(10000, Number(extraFee) || 0));
+
+    // 距离由后端根据最近可用司机当前位置计算，客户端传入的距离不参与计价。
     let priceResult;
     try {
-      priceResult = calculatePrice(vehicleType, distanceKm || 0, new Date(), extraFee || 0);
+      priceResult = calculatePrice(vehicleType, distanceKm, new Date(), safeExtraFee);
     } catch (e) {
       return res.json({ code: 1, message: e.message });
     }
@@ -109,44 +135,77 @@ module.exports = function(authMiddleware, upload) {
       INSERT INTO orders (
         order_no, user_id, vehicle_type, vehicle_plate, battery_percent, dashboard_off,
         pickup_lat, pickup_lng, pickup_address, pickup_description,
-        distance_km, base_price, distance_fee, extra_fee, total_price, is_night,
+        distance_km, distance_source, distance_is_estimate, distance_calculated_at,
+        pricing_driver_id, route_duration_minutes, route_toll, route_policy, route_request_id,
+        base_price, distance_fee, extra_fee, total_price, is_night,
         deposit_amount, deposit_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       orderNo, req.user.id, vehicleType, vehiclePlate || '', batteryPercent || 0, dashboardOff ? 1 : 0,
-      pickupLat || 0, pickupLng || 0, pickupAddress, pickupDescription || '',
-      distanceKm || 0, priceResult.basePrice, priceResult.distanceFee,
+      pickupLocation.lat, pickupLocation.lng, pickupAddress, pickupDescription || '',
+      distanceKm, 'tencent_driving_route_estimate', 1, db.now(), nearest.driver.id,
+      nearest.durationMinutes, nearest.toll, nearest.policy, nearest.requestId,
+      priceResult.basePrice, priceResult.distanceFee,
       priceResult.extraFee, priceResult.totalPrice, priceResult.isNight,
       dep.deposit, 'unpaid'
     );
 
     const order = db.prepare('SELECT * FROM orders WHERE order_no = ?').get(orderNo);
 
-    // ===== 需求3：智能派单，生成候选司机列表（存入order字段，同时返回前端）=====
-    const candidates = dispatch.rankDriversForOrder(order);
-    if (candidates && candidates.length) {
-      order.dispatch_mode = 'auto';
-      order.dispatch_candidates = JSON.stringify(candidates.slice(0, 10));
-      db.prepare(`UPDATE orders SET dispatch_mode=?, dispatch_candidates=? WHERE id=?`).run('auto', order.dispatch_candidates, order.id);
+    // 调度默认在押金支付成功后触发；若后台关闭“支付后派单”，则下单后立即执行。
+    let dispatchResult = { candidates: [] };
+    if (!settings.requireDeposit) {
+      try {
+        dispatchResult = await dispatch.dispatchOrder(order);
+      } catch (error) {
+        dispatchResult = { ok: false, candidates: [], message: error.message || '腾讯地图路线计算失败' };
+      }
+    } else {
+      order.dispatch_status = 'waiting_deposit';
+      order.dispatch_reason = '等待用户支付押金后进入派单';
+      db.save();
     }
+    const candidates = dispatchResult.candidates || [];
 
     res.json({
       code: 0, data: {
         ...normOrder(order),
         deposit_info: dep,
         credit_score: uChk.score,
-        recommended_drivers: candidates.slice(0, 10)
+        recommended_drivers: candidates,
+        dispatch_status: order.dispatch_status,
+        dispatch_message: dispatchResult.message || order.dispatch_reason,
+        distance_message: '腾讯地图按最近可用司机预估，指派后将按实际司机重新规划驾车路线'
       }, message: '下单成功，请立即支付押金后订单进入派单池（押金' + dep.deposit + '元）'
     });
   });
 
   // 价格预估（必须在 /:id 之前定义）
-  router.post('/estimate', authMiddleware, (req, res) => {
+  router.post('/estimate', authMiddleware, async (req, res) => {
     req.body = normalizeOrderBody(req.body);
-    const { vehicleType, distanceKm, extraFee } = req.body;
+    const { vehicleType, pickupLat, pickupLng, extraFee } = req.body;
 
     try {
-      const price = calculatePrice(vehicleType, distanceKm || 0, new Date(), extraFee || 0);
+      const pickupLocation = locationPricing.normalizeLocation(pickupLat, pickupLng);
+      const settings = dispatch.readSettings();
+      const nearest = pickupLocation
+        ? await locationPricing.findNearestAvailableDriver(
+          pickupLocation.lat,
+          pickupLocation.lng,
+          {
+            maxDistanceKm: settings.maxDistanceKm,
+            maxCandidates: settings.maxCandidates,
+            allowBusy: settings.allowBusy
+          }
+        )
+        : null;
+      const distanceKm = nearest ? nearest.distanceKm : 0;
+      const price = calculatePrice(
+        vehicleType,
+        distanceKm,
+        new Date(),
+        Math.max(0, Math.min(10000, Number(extraFee) || 0))
+      );
       const dep = helpers.calcDeposit(price.totalPrice);
       // 双写：保留旧 calculatePrice 字段 + 新增小程序 WXML 绑定必需字段（price-fix-B）
       const result = {
@@ -155,6 +214,10 @@ module.exports = function(authMiddleware, upload) {
         // 新字段（对齐 home-user.wxml L48-55 绑定变量）
         rescue_price: Number(price.basePrice || 0),
         kwh_price: Number(price.distanceFee || 0),
+        base_price: Number(price.basePrice || 0),
+        distance_fee: Number(price.distanceFee || 0),
+        extra_fee_total: Number(price.extraFee || 0),
+        total_price: Number(price.totalPrice || 0),
         total: Number(price.totalPrice || 0),
         deposit: Number(dep.deposit || 0),
         time_type: price.isNight ? 'night' : 'day',
@@ -162,6 +225,18 @@ module.exports = function(authMiddleware, upload) {
         deposit_ratio: dep.ratio,
         deposit_min: dep.min,
         distance_km: Number(distanceKm || 0),
+        distance_source: nearest ? 'tencent_driving_route_estimate' : 'unavailable',
+        distance_available: !!nearest,
+        distance_is_estimate: nearest ? 1 : 0,
+        pricing_driver_id: nearest ? nearest.driver.id : null,
+        route_duration_minutes: nearest ? nearest.durationMinutes : null,
+        route_policy: nearest ? nearest.policy : null,
+        route_request_id: nearest ? nearest.requestId : '',
+        distance_message: nearest
+          ? '腾讯地图驾车路线预估，最终以实际指派司机重新算路为准'
+          : (pickupLocation ? '当前没有已定位的在线司机' : '选择救援位置后自动计算距离'),
+        base_distance_km: Number(price.baseDistance || 0),
+        extra_per_km: Number(price.extraPerKm || 0),
         vehicle_type: price.vehicleType || vehicleType,
         vehicle_name: price.vehicleName || ''
       };
@@ -246,17 +321,24 @@ module.exports = function(authMiddleware, upload) {
     if (!order) {
       return res.json({ code: 1, message: '订单不存在' });
     }
+    if (order.status !== 'completed') {
+      return res.json({ code: 1, message: '服务尚未完成，暂不能支付尾款' });
+    }
     if (order.payment_status === 'paid') {
-      return res.json({ code: 1, message: '订单已支付' });
+      const result = settlement.settleOrder(order);
+      return res.json({ code: 0, message: '订单已支付', data: result });
     }
 
-    db.prepare('UPDATE orders SET payment_status = ? WHERE id = ?').run('paid', req.params.id);
-    res.json({ code: 0, message: '支付成功' });
+    order.payment_status = 'paid';
+    order.user_confirmed_at = db.now();
+    const result = settlement.settleOrder(order);
+    res.json({ code: 0, message: '支付成功，司机收入已结算', data: result });
   });
 
   // 用户评价
   router.post('/rate/:id', authMiddleware, (req, res) => {
-    const { rating, comment } = req.body;
+    const rating = Number(req.body.rating);
+    const comment = String(req.body.comment || '').trim();
     const order = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
     if (!order) {
       return res.json({ code: 1, message: '订单不存在' });
@@ -264,29 +346,93 @@ module.exports = function(authMiddleware, upload) {
     if (order.status !== 'completed') {
       return res.json({ code: 1, message: '订单未完成，无法评价' });
     }
-
-    db.prepare('UPDATE orders SET user_rating = ?, user_comment = ? WHERE id = ?')
-      .run(rating, comment || '', req.params.id);
-
-    // 更新司机评分
-    if (order.driver_id) {
-      const driver = db.prepare('SELECT * FROM drivers WHERE id = ?').get(order.driver_id);
-      const newRating = ((driver.rating * driver.total_orders) + rating) / (driver.total_orders + 1);
-      db.prepare('UPDATE drivers SET rating = ? WHERE id = ?').run(
-        Math.round(newRating * 100) / 100, order.driver_id
-      );
+    if (order.payment_status !== 'paid' || order.settlement_status !== 'settled') {
+      return res.json({ code: 1, message: '请先确认服务并支付尾款后再评价' });
+    }
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res.json({ code: 1, message: '评分必须是1到5之间的整数' });
+    }
+    if (order.user_rating !== null && order.user_rating !== undefined && order.user_rating !== '') {
+      return res.json({ code: 1, message: '该订单已经评价，不能重复提交' });
+    }
+    if (comment.length > 200) {
+      return res.json({ code: 1, message: '评价内容不能超过200字' });
+    }
+    if (!order.driver_id) {
+      return res.json({ code: 1, message: '订单没有关联司机，暂不能评价' });
     }
 
-    res.json({ code: 0, message: '评价成功' });
+    db.prepare('UPDATE orders SET user_rating = ?, user_comment = ? WHERE id = ?')
+      .run(rating, comment, req.params.id);
+
+    // 更新司机评分
+    const driver = db.prepare('SELECT * FROM drivers WHERE id = ?').get(order.driver_id);
+    const ratingCount = Number(driver.rating_count || 0);
+    const newRating = ((Number(driver.rating || 5) * ratingCount) + rating) / (ratingCount + 1);
+    db.prepare('UPDATE drivers SET rating = ?, rating_count = ? WHERE id = ?').run(
+      Math.round(newRating * 100) / 100,
+      ratingCount + 1,
+      order.driver_id
+    );
+    try { dispatch.updateDriverLevelAfterOrder(order.driver_id); } catch (e) { /* 评价后的等级刷新失败不影响评价 */ }
+
+    res.json({
+      code: 0,
+      message: '评价成功',
+      data: {
+        rating,
+        comment,
+        driver_rating: Math.round(newRating * 100) / 100,
+        driver_rating_count: ratingCount + 1
+      }
+    });
   });
 
   // 司机上传照片
-  router.post('/upload', authMiddleware, upload.single('photo'), (req, res) => {
+  router.post('/upload', authMiddleware, upload.single('photo'), async (req, res, next) => {
     if (!req.file) {
-      return res.json({ code: 1, message: '请选择图片' });
+      return res.json({ code: 1, message: '请选择要上传的图片' });
     }
-    const url = `/uploads/${req.file.filename}`;
-    res.json({ code: 0, data: { url } });
+    try {
+      let url;
+      if (req.file.buffer) {
+        const cloudbase = require('../cloudbase');
+        const uploaded = await cloudbase.uploadBuffer(req.file.buffer, req.file.originalname);
+        url = uploaded.fileID;
+      } else {
+        url = `/uploads/${req.file.filename}`;
+      }
+      res.json({ code: 0, message: '上传成功', data: { url } });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/upload-base64', authMiddleware, async (req, res, next) => {
+    try {
+      const cloudbase = require('../cloudbase');
+      if (!cloudbase.isEnabled()) {
+        return res.json({ code: 1, message: '当前环境未启用云存储上传' });
+      }
+
+      const body = req.body || {};
+      const base64 = String(body.base64 || '');
+      const ext = String(body.ext || '.jpg').toLowerCase();
+      const allowedExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+      if (!base64 || !allowedExtensions.has(ext)) {
+        return res.json({ code: 1, message: '图片格式不支持' });
+      }
+
+      const buffer = Buffer.from(base64, 'base64');
+      if (!buffer.length || buffer.length > 8 * 1024 * 1024) {
+        return res.json({ code: 1, message: '图片大小不能超过 8MB' });
+      }
+
+      const uploaded = await cloudbase.uploadBuffer(buffer, `photo${ext}`);
+      res.json({ code: 0, message: '上传成功', data: { url: uploaded.fileID } });
+    } catch (error) {
+      next(error);
+    }
   });
 
   return router;

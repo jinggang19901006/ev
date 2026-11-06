@@ -34,20 +34,18 @@ Component({
             {
               pagePath: '/pages/home-driver/home-driver',
               text: '订单大厅',
-              icon: '/assets/tab-orders.png',
-              iconActive: '/assets/tab-orders-active.png'
+              iconType: 'orders'
             },
             {
               pagePath: '/pages/mine/mine',
               text: '我的',
-              icon: '/assets/tab-mine.png',
-              iconActive: '/assets/tab-mine-active.png'
+              iconType: 'mine'
             }
           ]
         : [
-            { pagePath: '/pages/home-user/home-user', text: '首页' },
-            { pagePath: '/pages/order-user/order-user', text: '订单' },
-            { pagePath: '/pages/mine/mine', text: '我的' }
+            { pagePath: '/pages/home-user/home-user', text: '首页', iconType: 'home' },
+            { pagePath: '/pages/order-user/order-user', text: '订单', iconType: 'orders' },
+            { pagePath: '/pages/mine/mine', text: '我的', iconType: 'mine' }
           ]
       const selectedColor = role === 'driver' ? '#f59e0b' : '#00d4ff'
 
@@ -65,11 +63,17 @@ Component({
 
     switchTab(e) {
       const { path, index } = e.currentTarget.dataset
-      if (Number(index) === this.data.selected) return
+      const nextIndex = Number(index)
+      if (nextIndex === this.data.selected) return
+      const previousIndex = this.data.selected
+      this.setData({ selected: nextIndex })
       wx.switchTab({
         url: path,
         fail: () => {
-          wx.reLaunch({ url: path })
+          wx.reLaunch({
+            url: path,
+            fail: () => this.setData({ selected: previousIndex })
+          })
         }
       })
     }

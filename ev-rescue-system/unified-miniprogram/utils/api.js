@@ -6,8 +6,29 @@
 //   - /api/dispatch/*   需求3：推荐司机 + 等级字典 + 权重
 //   - 原有接口 /api/user /api/driver /api/orders /api/config
 
-const BASE_URL = 'http://localhost:3000/api';
-const FILE_BASE_URL = 'http://localhost:3000';
+const env = require('../config/env.js');
+const BASE_URL = env.DEVTOOLS_HOST + '/api';
+const FILE_BASE_URL = env.DEVTOOLS_HOST;
+
+function getBaseUrl() {
+  const app = getApp ? getApp() : null;
+  return (app && app.globalData && app.globalData.apiUrl) || BASE_URL;
+}
+
+function getFileBaseUrl() {
+  const app = getApp ? getApp() : null;
+  return (app && app.globalData && app.globalData.fileBaseUrl) || FILE_BASE_URL;
+}
+
+function useCloudContainer(app) {
+  return Boolean(
+    env.USE_CLOUD_CONTAINER &&
+    wx.cloud &&
+    app &&
+    app.globalData &&
+    app.globalData.useCloudContainer
+  );
+}
 
 const request = (path, options = {}) => {
   const app = getApp ? getApp() : null;
@@ -17,17 +38,17 @@ const request = (path, options = {}) => {
     Authorization: token ? `Bearer ${token}` : ''
   }, options.header || {});
   options.timeout = options.timeout || 15000;
+  const showLoading = options.showLoading !== false;
 
   return new Promise((resolve, reject) => {
-    wx.showLoading && wx.showLoading({ title: '加载中', mask: true });
-    wx.request({
-      url: BASE_URL + path,
+    if (showLoading) wx.showLoading && wx.showLoading({ title: '加载中', mask: true });
+    const requestOptions = {
       method: options.method || 'GET',
       data: options.data,
       header: options.header,
       timeout: options.timeout,
       success(res) {
-        wx.hideLoading && wx.hideLoading();
+        if (showLoading) wx.hideLoading && wx.hideLoading();
         const body = res.data || {};
         if (res.statusCode === 401 || body.code === 401) {
           try { wx.removeStorageSync('uni_token'); } catch (e) {}
@@ -41,19 +62,50 @@ const request = (path, options = {}) => {
         resolve(body.data);
       },
       fail(err) {
-        wx.hideLoading && wx.hideLoading();
-        wx.showToast && wx.showToast({ title: '网络异常', icon: 'none' });
-        reject(err);
+        if (showLoading) wx.hideLoading && wx.hideLoading();
+        const isDevtools = !!(app && app.globalData && app.globalData.isDevtools);
+        const host = (app && app.globalData && app.globalData.apiHost) || getBaseUrl();
+        const message = isDevtools
+          ? '无法连接本地服务，请确认后端已启动'
+          : '无法连接服务，请确认手机与电脑连接同一WiFi';
+        console.error('[network] request failed:', getBaseUrl() + path, err);
+        wx.showToast && wx.showToast({ title: message, icon: 'none', duration: 3000 });
+        const error = new Error(message);
+        error.cause = err;
+        error.apiHost = host;
+        reject(error);
       }
-    });
+    };
+
+    if (useCloudContainer(app)) {
+      wx.cloud.callContainer(Object.assign({}, requestOptions, {
+        config: { env: app.globalData.cloudEnvId },
+        path: '/api' + path,
+        header: Object.assign({}, requestOptions.header, {
+          'X-WX-SERVICE': app.globalData.cloudService
+        })
+      }));
+    } else {
+      wx.request(Object.assign({}, requestOptions, {
+        url: getBaseUrl() + path
+      }));
+    }
   });
 };
 
 /** 相对路径图片转完整URL */
 function resolveImageUrl(url) {
   if (!url) return '';
-  if (String(url).startsWith('http')) return url;
-  return FILE_BASE_URL + (url.startsWith('/') ? '' : '/') + url;
+  if (/^(https?:|cloud:|wxfile:)/.test(String(url))) return url;
+  return getFileBaseUrl() + (url.startsWith('/') ? '' : '/') + url;
+}
+
+async function resolveImageUrlForDisplay(url) {
+  const resolved = resolveImageUrl(url);
+  if (!String(resolved).startsWith('cloud://') || !wx.cloud) return resolved;
+  const result = await wx.cloud.getTempFileURL({ fileList: [resolved] });
+  const file = result && result.fileList && result.fileList[0];
+  return (file && file.tempFileURL) || resolved;
 }
 
 /** 上传图片到后端 /api/orders/upload */
@@ -64,9 +116,30 @@ function uploadImage(filePath) {
     || wx.getStorageSync('uni_token')
     || wx.getStorageSync('token')
     || '';
+  if (useCloudContainer(app)) {
+    const extensionMatch = String(filePath).match(/\.(jpe?g|png|webp)(?:\?.*)?$/i);
+    const ext = extensionMatch ? `.${extensionMatch[1].toLowerCase()}` : '.jpg';
+    return new Promise((resolve, reject) => {
+      wx.getFileSystemManager().readFile({
+        filePath,
+        encoding: 'base64',
+        success(result) {
+          request('/orders/upload-base64', {
+            method: 'POST',
+            data: { base64: result.data, ext }
+          }).then(resolve).catch(reject);
+        },
+        fail(error) {
+          wx.showToast && wx.showToast({ title: '读取图片失败', icon: 'none' });
+          reject(error);
+        }
+      });
+    });
+  }
+
   return new Promise((resolve, reject) => {
     wx.uploadFile({
-      url: BASE_URL + '/orders/upload',
+      url: getBaseUrl() + '/orders/upload',
       filePath,
       // ⚠️ 必须与后端 multer upload.single('photo') 的字段名一致！
       // 前值 name='file' 会导致 multer 抛 500「服务器内部错误」req.file=undefined
@@ -79,7 +152,16 @@ function uploadImage(filePath) {
           resolve(body.data);
         } catch (e) { reject(e); }
       },
-      fail: reject
+      fail(err) {
+        const app = getApp ? getApp() : null;
+        const isDevtools = !!(app && app.globalData && app.globalData.isDevtools);
+        const message = isDevtools
+          ? '上传失败，请确认后端已启动'
+          : '上传失败，请确认手机与电脑连接同一WiFi';
+        console.error('[network] upload failed:', getBaseUrl() + '/orders/upload', err);
+        wx.showToast && wx.showToast({ title: message, icon: 'none', duration: 3000 });
+        reject(new Error(message));
+      }
     });
   });
 }
@@ -134,6 +216,7 @@ const user = {
 const driver = {
   login: (body) => request('/driver/login', { method: 'POST', data: body }),
   info: () => request('/driver/info', { method: 'GET' }),
+  updateLocation: (body) => request('/driver/location', { method: 'POST', data: body, showLoading: false }),
   updateStatus: (status) => request('/driver/status', { method: 'POST', data: { status } }),
   pendingOrders: () => request('/driver/pending-orders', { method: 'GET' }),
   activeOrder: () => request('/driver/active-order', { method: 'GET' }),
@@ -197,7 +280,7 @@ function toQuery(obj) {
 }
 
 module.exports = {
-  BASE_URL, FILE_BASE_URL, request, resolveImageUrl, uploadImage,
+  BASE_URL, FILE_BASE_URL, request, resolveImageUrl, resolveImageUrlForDisplay, uploadImage,
   auth, config, orders, user, driver, cards, payments, adminCards,
   // 旧命名兼容
   checkAccount: auth.checkAccount,

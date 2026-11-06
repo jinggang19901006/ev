@@ -17,6 +17,10 @@
       <view class="user-info">
         <text class="user-name">{{driver.name || '救援司机'}}</text>
         <view class="user-tags">
+          <view class="driver-level-tag" style="border-color: {{driverLevel.badgeColor}};">
+            <text style="color: {{driverLevel.badgeColor}};">{{driverLevel.code}}</text>
+            <text>{{driverLevel.name}}</text>
+          </view>
           <view class="user-tag" bindtap="onChangeWorkStatus">
             <view class="tag-dot {{driverStatus === 'online' ? 'green' : driverStatus === 'busy' ? 'orange' : 'gray'}}"></view>
             <text>{{driverStatus === 'online' ? '在线接单' : driverStatus === 'busy' ? '忙碌中' : '离线'}}</text>
@@ -105,6 +109,33 @@
     </view>
   </view>
 
+  <!-- 司机服务等级 -->
+  <view class="section driver-level-section" wx:if="{{isLoggedIn && role === 'driver'}}">
+    <view class="driver-level-panel" style="background: linear-gradient(110deg, {{driverLevel.gradientFrom}}, {{driverLevel.gradientTo}});">
+      <view class="driver-level-head">
+        <view class="driver-level-identity">
+          <view class="driver-level-code" style="background: {{driverLevel.badgeColor}};">{{driverLevel.code}}</view>
+          <view>
+            <text class="driver-level-name">{{driverLevel.name}}</text>
+            <text class="driver-level-next">{{driverLevel.nextText}}</text>
+          </view>
+        </view>
+        <view class="driver-level-factor">
+          <text>派单系数</text>
+          <text>×{{driverLevel.coefficient}}</text>
+        </view>
+      </view>
+      <view class="driver-level-progress">
+        <view class="driver-level-progress-bar" style="width: {{driverLevel.progress}}%; background: {{driverLevel.badgeColor}};"></view>
+      </view>
+      <view class="driver-level-stats">
+        <view><text>{{driverLevel.totalOrders}}</text><text>累计完成</text></view>
+        <view><text>{{driverLevel.rating}}</text><text>当前评分</text></view>
+        <view><text>{{driverLevel.acceptCount7d}}</text><text>近7日接单</text></view>
+      </view>
+    </view>
+  </view>
+
   <!-- 快捷入口·用户（未登录同用户视图） -->
   <view class="quick-actions" wx:if="{{!(isLoggedIn && role === 'driver')}}">
     <view class="quick-item" bindtap="onMenuTap" data-path="orders">
@@ -127,11 +158,48 @@
     </view>
   </view>
 
+  <!-- 司机钱包 -->
+  <view class="section" wx:if="{{isLoggedIn && role === 'driver'}}">
+    <view class="wallet-card">
+      <view class="wallet-head">
+        <view>
+          <text class="wallet-label">可提现余额</text>
+          <view class="wallet-balance">
+            <text class="wallet-symbol">¥</text>
+            <text class="wallet-value">{{wallet.balance}}</text>
+          </view>
+        </view>
+        <button class="wallet-withdraw-btn" bindtap="onOpenWithdraw">申请提现</button>
+      </view>
+      <view class="wallet-meta">
+        <text>审核中 ¥{{wallet.frozenAmount}}</text>
+        <text>累计收入 ¥{{wallet.totalEarnings}}</text>
+        <text>最低提现 ¥{{wallet.minWithdrawAmount}}</text>
+      </view>
+    </view>
+
+    <view class="withdraw-history" wx:if="{{wallet.withdrawals.length > 0}}">
+      <view class="withdraw-history-title">最近提现</view>
+      <view class="withdraw-record" wx:for="{{wallet.withdrawals}}" wx:key="id">
+        <view class="withdraw-record-main">
+          <view class="withdraw-record-top">
+            <text class="withdraw-record-type">{{item.typeLabel}}</text>
+            <text class="withdraw-status status-{{item.statusClass}}">{{item.statusLabel}}</text>
+          </view>
+          <text class="withdraw-record-time">{{item.createdAtText}}</text>
+          <text class="withdraw-record-remark" wx:if="{{item.review_remark}}">{{item.review_remark}}</text>
+        </view>
+        <text class="withdraw-record-amount">-¥{{item.amount}}</text>
+      </view>
+    </view>
+  </view>
+
   <!-- 司机收入统计 -->
   <view class="section" wx:if="{{isLoggedIn && role === 'driver'}}">
     <view class="section-header">
       <text class="section-title">收入统计</text>
-      <text class="section-count earn-switch" bindtap="onChangeWorkStatus">切换接单状态 ›</text>
+      <text class="section-count settlement-pending" wx:if="{{hasPendingEarnings}}">待用户支付 ¥{{earnings.pendingAmount}}</text>
+      <text class="section-count earn-switch" wx:else bindtap="onChangeWorkStatus">切换接单状态 ›</text>
     </view>
     <view class="earnings-grid">
       <view class="earning-card earn-today">
@@ -140,7 +208,7 @@
           <text class="earn-symbol">¥</text>
           <text class="earn-value">{{earnings.today.amount}}</text>
         </view>
-        <text class="earn-sub">今日完成 {{earnings.today.count}} 单</text>
+        <text class="earn-sub">今日已结算 {{earnings.today.count}} 单</text>
       </view>
       <view class="earning-card earn-month">
         <text class="earn-label">本月收入</text>
@@ -148,7 +216,7 @@
           <text class="earn-symbol">¥</text>
           <text class="earn-value">{{earnings.month.amount}}</text>
         </view>
-        <text class="earn-sub">本月完成 {{earnings.month.count}} 单</text>
+        <text class="earn-sub">本月已结算 {{earnings.month.count}} 单</text>
       </view>
       <view class="earning-card earn-total">
         <text class="earn-label">累计收入</text>
@@ -156,51 +224,8 @@
           <text class="earn-symbol">¥</text>
           <text class="earn-value">{{earnings.total.amount}}</text>
         </view>
-        <text class="earn-sub">累计完成 {{earnings.total.count}} 单</text>
+        <text class="earn-sub">累计已结算 {{earnings.total.count}} 单</text>
       </view>
-    </view>
-  </view>
-
-  <!-- 服务卡区域（仅用户角色） -->
-  <view class="section" wx:if="{{isLoggedIn && role !== 'driver'}}">
-    <view class="section-header" bindtap="onMenuTap" data-path="cards">
-      <text class="section-title">我的服务卡</text>
-      <text class="section-count" wx:if="{{cards.length > 0}}">共{{cards.length}}张  ›</text>
-      <text class="section-count" wx:else>查看 ›</text>
-    </view>
-
-    <view class="cards-list" wx:if="{{cards.length > 0}}">
-      <view class="service-card" wx:for="{{cards}}" wx:key="id" bindtap="onMenuTap" data-path="cards">
-        <view class="card-top">
-          <view class="card-type">
-            <text class="card-type-icon" wx:if="{{item.vehicleType === 'small'}}">S</text>
-            <text class="card-type-icon" wx:if="{{item.vehicleType === 'medium'}}">M</text>
-            <text class="card-type-icon" wx:if="{{item.vehicleType === 'large'}}">L</text>
-            <text class="card-type-icon" wx:if="{{item.vehicleType === '*' || item.vehicleType === 'all'}}">通</text>
-            <text class="card-type-name">{{item.vehicleType === 'small' ? '小型车' : item.vehicleType === 'medium' ? '中型车' : item.vehicleType === 'large' ? '大型车' : '通用车型'}}</text>
-          </view>
-          <view class="card-status {{(item.status === 'unused' || item.status === 'active') ? 'unused' : (item.status === 'used' || item.status === 'redeemed') ? 'used' : 'expired'}}">
-            <text wx:if="{{item.status === 'unused' || item.status === 'active'}}">可使用</text>
-            <text wx:elif="{{item.status === 'used' || item.status === 'redeemed'}}">已使用</text>
-            <text wx:else>已过期</text>
-          </view>
-        </view>
-        <view class="card-bottom">
-          <view class="card-info">
-            <text class="card-no">卡号：{{item.cardNo}}</text>
-            <text class="card-uses">剩余次数：{{item.totalUses - item.usedCount}}/{{item.totalUses}}</text>
-          </view>
-          <view class="card-price">
-            <text class="price-num">{{item.price}}</text>
-            <text class="price-unit">元</text>
-          </view>
-        </view>
-      </view>
-    </view>
-
-    <view class="empty-cards" wx:if="{{cards.length === 0}}" bindtap="onMenuTap" data-path="cards">
-      <view class="empty-icon-small"></view>
-      <text class="empty-text-small">暂无服务卡，点击查看</text>
     </view>
   </view>
 
@@ -227,6 +252,59 @@
     <text class="footer-title">绵阳24小时新能源应急充电救援</text>
     <text class="footer-text">60kW直流移动充电救援 | 服务区域：绵阳及周边30公里</text>
     <text class="footer-text">救援电话：15228301555 | 7x24小时全年无休</text>
+  </view>
+</view>
+
+<!-- 提现申请弹窗 -->
+<view class="withdraw-modal-mask" wx:if="{{showWithdrawModal}}" catchtap="onCloseWithdraw">
+  <view class="withdraw-modal" catchtap="stopPropagation">
+    <view class="withdraw-modal-head">
+      <view>
+        <text class="withdraw-modal-title">申请提现</text>
+        <text class="withdraw-modal-sub">提交后金额进入审核中，拒绝将自动退回</text>
+      </view>
+      <view class="withdraw-close" catchtap="onCloseWithdraw">
+        <view class="close-icon"></view>
+      </view>
+    </view>
+
+    <view class="withdraw-balance-tip">
+      <text>可提现余额</text>
+      <text>¥{{wallet.balance}}</text>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">提现金额</text>
+      <view class="withdraw-amount-input">
+        <text class="withdraw-currency">¥</text>
+        <input type="digit" value="{{withdrawAmount}}" placeholder="最低{{wallet.minWithdrawAmount}}元" placeholder-class="input-placeholder" bindinput="onWithdrawAmountInput" />
+        <text class="withdraw-all" bindtap="onWithdrawAll">全部</text>
+      </view>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">收款方式</text>
+      <picker mode="selector" range="{{withdrawTypes}}" range-key="label" value="{{withdrawTypeIndex}}" bindchange="onWithdrawTypeChange">
+        <view class="withdraw-picker">
+          <text>{{withdrawTypes[withdrawTypeIndex].label}}</text>
+          <text class="withdraw-picker-arrow">›</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">收款人姓名</text>
+      <input class="form-input" value="{{withdrawAccountName}}" maxlength="30" placeholder="请填写实名姓名" placeholder-class="input-placeholder" bindinput="onWithdrawNameInput" />
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">收款账号</text>
+      <input class="form-input" value="{{withdrawAccount}}" maxlength="64" placeholder="微信号、支付宝账号或银行卡号" placeholder-class="input-placeholder" bindinput="onWithdrawAccountInput" />
+    </view>
+
+    <button class="withdraw-submit" loading="{{withdrawing}}" disabled="{{withdrawing}}" bindtap="onSubmitWithdraw">
+      {{withdrawing ? '提交中...' : '确认申请提现'}}
+    </button>
   </view>
 </view>
 

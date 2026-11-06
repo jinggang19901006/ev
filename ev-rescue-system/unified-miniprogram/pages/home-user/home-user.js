@@ -24,6 +24,7 @@ Page({
   },
 
   onShow() {
+    app.syncTabBar(this)
     this.checkNightTime()
     // 检查是否有进行中的订单
     if (app.globalData.token) {

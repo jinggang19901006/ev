@@ -23,6 +23,8 @@ Page({
     pickupLng: 0,
     pickupDescription: '',
     distanceKm: 0,
+    distanceAvailable: false,
+    distanceMessage: '选择救援位置后自动计算',
     extraFee: 0,
     estimate: null,
     isNight: false,
@@ -91,7 +93,7 @@ Page({
           pickupLat: res.latitude,
           pickupLng: res.longitude
         })
-        this.estimateDistance()
+        this.estimatePrice()
       },
       fail: (err) => {
         console.log('取消选择地址或获取失败', err)
@@ -107,48 +109,10 @@ Page({
     this.setData({ pickupDescription: e.detail.value })
   },
 
-  onDistanceInput(e) {
-    let val = parseFloat(e.detail.value) || 0
-    if (val > 200) {
-      wx.showToast({ title: '距离不能超过200km', icon: 'none' })
-      val = 200
-    }
-    this.setData({ distanceKm: val })
-    this.estimatePrice()
-  },
-
   onExtraFeeInput(e) {
     const val = parseFloat(e.detail.value) || 0
     this.setData({ extraFee: val })
     this.estimatePrice()
-  },
-
-  estimateDistance() {
-    if (!this.data.pickupLat || !this.data.pickupLng) return
-    const mianyangLat = 31.4677
-    const mianyangLng = 104.6796
-    let dist = this.calcDistance(
-      mianyangLat, mianyangLng,
-      this.data.pickupLat, this.data.pickupLng
-    )
-    dist = Math.round(dist * 1.3)
-    if (dist > 200) {
-      wx.showToast({ title: '距离超出服务范围(200km)', icon: 'none' })
-      dist = 200
-    }
-    this.setData({ distanceKm: dist })
-    this.estimatePrice()
-  },
-
-  calcDistance(lat1, lng1, lat2, lng2) {
-    const R = 6371
-    const dLat = (lat2 - lat1) * Math.PI / 180
-    const dLng = (lng2 - lng1) * Math.PI / 180
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLng / 2) * Math.sin(dLng / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    return R * c
   },
 
   /**
@@ -161,8 +125,10 @@ Page({
     const data = {
       vehicle_type: this.data.selectedType,
       vehicleType: this.data.selectedType,
-      distance_km: this.data.distanceKm,
-      distanceKm: this.data.distanceKm,
+      pickup_lat: this.data.pickupLat,
+      pickupLat: this.data.pickupLat,
+      pickup_lng: this.data.pickupLng,
+      pickupLng: this.data.pickupLng,
       extra_fee: this.data.extraFee || 0,
       extraFee: this.data.extraFee || 0,
       is_night: this.data.isNight ? 1 : 0
@@ -170,12 +136,17 @@ Page({
 
     try {
       let result = null
+      let routeError = null
       // 优先走 orders.estimate（POST，带距离/额外费字段 → 真实超出里程费+押金）
       if (api.orders && typeof api.orders.estimate === 'function') {
         try {
           result = await api.orders.estimate(data)
-        } catch (e) { result = null }
+        } catch (e) {
+          routeError = e
+          result = null
+        }
       }
+      if (!result && this.data.pickupLat && this.data.pickupLng && routeError) throw routeError
       // 兜底：config.pricing（GET，返回系统定价基准，不含距离/额外费信息）
       if (!result && api.config && typeof api.config.pricing === 'function') {
         try {
@@ -197,6 +168,9 @@ Page({
         const extraPer = result.extra_per_km != null ? Number(result.extra_per_km) : 10
 
         this.setData({
+          distanceKm: Number(result.distance_km || 0),
+          distanceAvailable: !!result.distance_available,
+          distanceMessage: result.distance_message || '',
           estimate: {
             basePrice: Math.round(base * 100) / 100,
             distanceFee: Math.round(distFee * 100) / 100,
@@ -211,6 +185,15 @@ Page({
       }
       throw new Error('no pricing data')
     } catch (err) {
+      if (this.data.pickupLat && this.data.pickupLng) {
+        this.setData({
+          estimate: null,
+          distanceKm: 0,
+          distanceAvailable: false,
+          distanceMessage: (err && err.message) || '腾讯地图路线计算失败，请稍后重试'
+        })
+        return
+      }
       // 本地兜底：5km 一口价基准 + 超出 10/km + 夜间+30
       const vehicle = this.data.vehicleTypes[this.data.selectedTypeIndex]
       if (!vehicle) return
@@ -224,6 +207,8 @@ Page({
       const extraFeeNum = this.data.extraFee || 0
       const totalPrice = basePrice + distanceFee + extraFeeNum
       this.setData({
+        distanceAvailable: false,
+        distanceMessage: '暂时无法获取司机位置，提交订单时将重新校验',
         estimate: {
           basePrice: Math.round(basePrice * 100) / 100,
           distanceFee: Math.round(distanceFee * 100) / 100,
@@ -253,8 +238,8 @@ Page({
       wx.showToast({ title: '请选择车型', icon: 'none' })
       return
     }
-    if (!this.data.pickupAddress) {
-      wx.showToast({ title: '请填写救援地址', icon: 'none' })
+    if (!this.data.pickupAddress || !this.data.pickupLat || !this.data.pickupLng) {
+      wx.showToast({ title: '请通过地图选择救援位置', icon: 'none' })
       return
     }
 
@@ -277,8 +262,6 @@ Page({
       pickupAddress: this.data.pickupAddress,
       pickup_description: this.data.pickupDescription,
       pickupDescription: this.data.pickupDescription,
-      distance_km: this.data.distanceKm,
-      distanceKm: this.data.distanceKm,
       extra_fee: this.data.extraFee || 0,
       extraFee: this.data.extraFee || 0,
       is_night: this.data.isNight ? 1 : 0

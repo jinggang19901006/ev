@@ -82,6 +82,15 @@ node server.js
 - 管理员账号: admin / admin123
 - 数据文件: backend/rescue.json（自动创建）
 
+#### 腾讯地图真实驾车路线计价
+
+订单距离、超距费用和派单距离统一调用腾讯位置服务 Direction WebService API。上线前必须创建服务器类型的 WebService Key，并任选一种方式配置：
+
+1. 管理后台进入“系统设置 → 地图与路线计价”，填写“腾讯位置服务 WebService Key”。
+2. 启动后端前设置环境变量 `TENCENT_MAP_KEY`（环境变量优先于后台配置）。
+
+默认使用 `SHORT_DISTANCE` 路线策略，避免实时拥堵改变计价路线。腾讯接口不可用或密钥无效时，系统会停止报价和派单，不会回退到直线距离估算。
+
 ### 2. 管理后台
 
 直接用浏览器打开 `admin-dashboard/index.html`，或在后端服务运行后访问 http://localhost:3000 即可（需配置静态文件服务）。
@@ -191,3 +200,6 @@ pending(待接单) → accepted(已接单) → en_route(前往中) → arrived(�
 
 救援电话：15228301555
 服务区域：绵阳及周边30公里
+
+## 更新记录
+1. 2016-11-05 : 完善司机端接单后的地位导航功能

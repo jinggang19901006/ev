@@ -2,11 +2,17 @@
 // 统一版小程序：用户+司机二合一
 // 关键：全局状态中记录当前角色 currentRole，不同角色展示不同首页/功能
 const api = require('./utils/api.js');
+const env = require('./config/env.js');
 
 App({
   globalData: {
-    apiUrl: 'http://localhost:3000/api',    // 开发环境
-    fileBaseUrl: 'http://localhost:3000',
+    apiUrl: '',
+    fileBaseUrl: '',
+    apiHost: '',
+    isDevtools: false,
+    useCloudContainer: false,
+    cloudEnvId: '',
+    cloudService: '',
     servicePhone: '15228301555',
     token: '',
     account: null,           // unified_accounts（手机号+微信+主身份）
@@ -20,6 +26,14 @@ App({
   },
 
   onLaunch() {
+    if (env.USE_CLOUD_CONTAINER && wx.cloud) {
+      wx.cloud.init({
+        env: env.CLOUD_ENV_ID,
+        traceUser: true
+      });
+    }
+    this.configureApiEndpoint();
+
     // 适配导航栏
     try {
       const sys = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
@@ -49,6 +63,32 @@ App({
     wx.setStorage({ key: 'app_launch_at', data: Date.now() });
   },
 
+  configureApiEndpoint() {
+    let platform = '';
+    try {
+      const device = wx.getDeviceInfo ? wx.getDeviceInfo() : wx.getSystemInfoSync();
+      platform = String(device.platform || '');
+    } catch (e) { /* use device endpoint as the safer fallback */ }
+
+    const isDevtools = platform === 'devtools';
+    let host = isDevtools ? env.DEVTOOLS_HOST : env.DEVICE_HOST;
+    try {
+      const override = wx.getStorageSync('api_host_override');
+      if (override && /^https?:\/\//.test(String(override))) host = String(override).replace(/\/+$/, '');
+    } catch (e) { /* ignore invalid local override */ }
+
+    this.globalData.isDevtools = isDevtools;
+    this.globalData.useCloudContainer = Boolean(env.USE_CLOUD_CONTAINER);
+    this.globalData.cloudEnvId = env.CLOUD_ENV_ID || '';
+    this.globalData.cloudService = env.CLOUD_SERVICE || '';
+    this.globalData.apiHost = host;
+    this.globalData.apiUrl = host + '/api';
+    this.globalData.fileBaseUrl = host;
+    console.info(this.globalData.useCloudContainer
+      ? `[network] 云托管服务: ${this.globalData.cloudService}`
+      : `[network] ${isDevtools ? '开发者工具' : '真机'}接口: ${this.globalData.apiUrl}`);
+  },
+
   // ========== 登录态存取 ==========
   saveLogin({ token, account, profile, role }) {
     this.globalData.token = token || '';
@@ -73,6 +113,15 @@ App({
 
   isLoggedIn() {
     return !!this.globalData.token && !!this.globalData.currentRole;
+  },
+
+  // Tab 页每次显示时主动同步自定义 tabBar，避免组件生命周期不触发导致选中态滞后。
+  syncTabBar(page) {
+    if (!page || typeof page.getTabBar !== 'function') return;
+    const tabBar = page.getTabBar();
+    if (tabBar && typeof tabBar.refresh === 'function') {
+      tabBar.refresh();
+    }
   },
 
   // 切换角色（调用后端 /api/auth/switch-role）
@@ -115,10 +164,10 @@ App({
 
   // 根据V等级id返回完整等级信息（含渐变色+发光色）
   getLevelInfo(levelId) {
-    return (this.globalData.levelDict || []).find(l => l.id === levelId) || {
-      level: 'V1', name: '新晋救援者', badge_color: '#9CA3AF',
-      gradient_from: '#F3F4F6', gradient_to: '#E5E7EB',
-      glow_color: 'rgba(156,163,175,0.4)'
+    return (this.globalData.levelDict || []).find(l => Number(l.id) === Number(levelId)) || {
+      level: 'V1', name: '新晋救援者', badge_color: '#0F766E',
+      gradient_from: '#CCFBF1', gradient_to: '#99F6E4',
+      glow_color: 'rgba(13,148,136,0.35)'
     };
   }
 });

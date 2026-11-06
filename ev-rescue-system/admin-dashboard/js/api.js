@@ -2,7 +2,9 @@
  * API 请求封装
  * 新能源车移动充电救援系统 - 管理后台
  */
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = /^https?:$/.test(window.location.protocol)
+  ? `${window.location.origin}/api`
+  : 'http://localhost:3000/api';
 
 /* ---------------- Token 管理 ---------------- */
 const TokenManager = {
@@ -248,12 +250,18 @@ const API = {
     return request(`/admin/withdrawals${qs ? '?' + qs : ''}`);
   },
 
-  approveWithdrawal(id) {
-    return request(`/admin/withdrawals/${id}/approve`, { method: 'POST' });
+  approveWithdrawal(id, data) {
+    return request(`/admin/withdrawals/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(data || {})
+    });
   },
 
-  rejectWithdrawal(id) {
-    return request(`/admin/withdrawals/${id}/reject`, { method: 'POST' });
+  rejectWithdrawal(id, data) {
+    return request(`/admin/withdrawals/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(data || {})
+    });
   },
 
   /* ===== 司机钱包一览 ===== */
@@ -294,6 +302,21 @@ const API = {
   },
   dispatchWeights() {
     return request('/dispatch/weights');
+  },
+  dispatchSaveSettings(data) {
+    return request('/dispatch/settings', {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+  dispatchQueue() {
+    return request('/dispatch/queue');
+  },
+  dispatchLogs(limit = 30) {
+    return request(`/dispatch/logs?limit=${encodeURIComponent(limit)}`);
+  },
+  dispatchRun(orderId) {
+    return request(`/dispatch/run/${orderId}`, { method: 'POST' });
   },
   dispatchLevels() {
     return request('/dispatch/levels');

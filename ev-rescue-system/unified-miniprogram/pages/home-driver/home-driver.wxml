@@ -2,7 +2,7 @@
 <view class="orders-page">
   <!-- 自定义导航栏 -->
   <view class="custom-nav" style="padding-top: {{statusBarHeight}}px;">
-    <view class="nav-bar" style="height: {{navBarHeight}}px;">
+    <view class="nav-bar" style="height: {{navBarHeight}}px; padding-right: {{navRightPadding}}px;">
       <view class="nav-title">
         <text class="nav-title-text">订单大厅</text>
         <view class="nav-subtitle">绵阳 · 充电救援</view>
@@ -80,15 +80,26 @@
 
       <!-- 空列表 -->
       <view wx:elif="{{orders.length === 0}}" class="empty-state">
-        <view class="empty-illustration">
-          <view class="empty-illustration-circle">
-            <text class="empty-illustration-icon">⚡</text>
+        <view class="listening-radar">
+          <view class="radar-grid"></view>
+          <view class="radar-ring radar-ring-outer"></view>
+          <view class="radar-ring radar-ring-middle"></view>
+          <view class="radar-sweep"></view>
+          <view class="radar-signal signal-one"></view>
+          <view class="radar-signal signal-two"></view>
+          <view class="radar-core">
+            <view class="radar-bolt"></view>
           </view>
-          <view class="empty-illustration-ring ring-1"></view>
-          <view class="empty-illustration-ring ring-2"></view>
         </view>
-        <text class="empty-title">暂无待接单订单</text>
-        <text class="empty-subtitle">系统每10秒自动刷新，请耐心等待</text>
+        <view class="listening-title-row">
+          <text class="empty-title">正在听单</text>
+          <view class="listening-dots">
+            <view class="listening-dot dot-one"></view>
+            <view class="listening-dot dot-two"></view>
+            <view class="listening-dot dot-three"></view>
+          </view>
+        </view>
+        <text class="empty-subtitle">持续扫描附近救援需求，每10秒自动刷新</text>
         <view class="empty-tips">
           <view class="empty-tip-item">
             <text class="tip-icon">✓</text>
@@ -112,12 +123,17 @@
           wx:key="id" 
           class="order-card"
           data-id="{{item.id}}"
-          bindtap="onOrderTap"
         >
-          <!-- 卡片顶部状态标识 -->
-          <view class="card-top-badge">
-            <text class="badge-dot"></text>
-            <text class="badge-text">新订单</text>
+          <!-- 卡片状态与时间 -->
+          <view class="order-card-meta">
+            <view class="card-top-badge">
+              <text class="badge-dot"></text>
+              <text class="badge-text">新订单</text>
+            </view>
+            <view class="order-time-info">
+              <text class="time-clock-icon">🕐</text>
+              <text class="time-display-text">{{item.createTimeText || '刚刚'}}</text>
+            </view>
           </view>
 
           <!-- 卡片头部：车型 + 价格 -->
@@ -155,7 +171,7 @@
           </view>
 
           <!-- 地址信息 -->
-          <view class="order-address-box">
+          <view class="order-address-box" catchtap="onNavigate" data-id="{{item.id}}">
             <view class="address-icon-box">
               <text class="address-marker">📍</text>
             </view>
@@ -163,15 +179,20 @@
               <text class="address-label">救援地址</text>
               <text class="address-detail-text">{{item.address}}</text>
             </view>
+            <view class="address-nav">
+              <text class="address-nav-icon">➤</text>
+              <text class="address-nav-text">导航</text>
+            </view>
           </view>
 
-          <!-- 卡片底部：时间 + 操作按钮 -->
+          <!-- 卡片底部：明确分离查看、联系与接单 -->
           <view class="order-card-footer">
-            <view class="order-time-info">
-              <text class="time-clock-icon">🕐</text>
-              <text class="time-display-text">{{item.createTimeText || '刚刚'}}</text>
-            </view>
             <view class="order-action-buttons">
+              <button
+                class="action-btn-ghost"
+                catchtap="onViewOrder"
+                data-id="{{item.id}}"
+              >详情</button>
               <button 
                 wx:if="{{item.phone}}" 
                 class="action-btn-outline" 
@@ -181,6 +202,11 @@
                 <text class="btn-phone-icon">📞</text>
                 联系
               </button>
+              <button
+                class="action-btn-outline action-btn-nav"
+                catchtap="onNavigate"
+                data-id="{{item.id}}"
+              >导航</button>
               <button 
                 class="action-btn-primary {{acceptingId === item.id ? 'btn-loading' : ''}}"
                 catchtap="onAcceptOrder"

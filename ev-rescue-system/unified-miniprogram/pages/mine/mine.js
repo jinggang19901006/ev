@@ -13,11 +13,44 @@ Page({
     userInfo: null,         // 用户资料
     driver: null,           // 司机资料
     driverStatus: 'offline',
+    driverLevel: {
+      code: 'V1',
+      name: '新晋救援者',
+      coefficient: '0.80',
+      badgeColor: '#0F766E',
+      gradientFrom: '#CCFBF1',
+      gradientTo: '#99F6E4',
+      totalOrders: 0,
+      rating: '5.00',
+      acceptCount7d: 0,
+      progress: 0,
+      nextText: '完成首单后开始等级成长'
+    },
     earnings: {
       today: { count: 0, amount: 0 },
       month: { count: 0, amount: 0 },
-      total: { count: 0, amount: 0 }
+      total: { count: 0, amount: 0 },
+      pendingAmount: '0.00'
     },
+    hasPendingEarnings: false,
+    wallet: {
+      balance: 0,
+      frozenAmount: 0,
+      totalEarnings: 0,
+      minWithdrawAmount: 10,
+      withdrawals: []
+    },
+    showWithdrawModal: false,
+    withdrawTypes: [
+      { value: 'wechat', label: '微信零钱' },
+      { value: 'alipay', label: '支付宝' },
+      { value: 'bank', label: '银行卡' }
+    ],
+    withdrawTypeIndex: 0,
+    withdrawAmount: '',
+    withdrawAccountName: '',
+    withdrawAccount: '',
+    withdrawing: false,
     isLoggedIn: false,
     // 登录表单（保留data结构，弹窗UI不变，提交逻辑改为跳auth-entry）
     showLoginModal: false,
@@ -26,8 +59,6 @@ Page({
     tempPhone: '',
     canLogin: false,
     logging: false,
-    // 服务卡
-    cards: [],
     // 菜单（onShow 时按角色生成）
     menuList: []
   },
@@ -41,6 +72,7 @@ Page({
   },
 
   onShow() {
+    app.syncTabBar(this)
     this.checkLoginStatus()
   },
 
@@ -59,14 +91,14 @@ Page({
       if (role === 'driver') {
         this.loadDriverInfo()
         this.loadEarnings()
+        this.loadWallet()
       } else {
         this.loadUserInfo()
-        this.loadCards()
       }
     } else {
       this.setData({
         isLoggedIn: false, role: 'user',
-        userInfo: null, driver: null, cards: [],
+        userInfo: null, driver: null,
         menuList: this.buildMenu('user')
       })
     }
@@ -110,13 +142,20 @@ Page({
   loadDriverInfo() {
     // 先用本地缓存即时渲染，再拉网络
     const cached = (app.globalData && app.globalData.profile) || wx.getStorageSync('uni_profile')
-    if (cached) this.setData({ driver: cached, driverStatus: cached.status || cached.work_status || 'offline' })
+    if (cached) {
+      this.setData({
+        driver: cached,
+        driverStatus: cached.status || cached.work_status || 'offline',
+        driverLevel: this.buildDriverLevel(cached)
+      })
+    }
     api.driver.info().then(data => {
       const driver = (data && (data.driver || data)) || cached || null
       if (driver) {
         this.setData({
           driver,
-          driverStatus: driver.status || driver.work_status || this.data.driverStatus
+          driverStatus: driver.status || driver.work_status || this.data.driverStatus,
+          driverLevel: this.buildDriverLevel(driver)
         })
         if (app.globalData) app.globalData.profile = driver
       }
@@ -124,6 +163,38 @@ Page({
       console.error('loadDriverInfo fail', err)
       if (err && /登录过期|401|请重新登录/.test(err.message || '')) this.goToLogin()
     })
+  },
+
+  buildDriverLevel(driver) {
+    const level = driver.level_info || app.getLevelInfo(Number(driver.level_id || 1)) || {}
+    const next = driver.next_level || null
+    const totalOrders = Number(driver.total_orders || 0)
+    const rating = Number(driver.rating || 5)
+    let progress = 100
+    let nextText = '已达到最高服务等级'
+    if (next) {
+      const currentMin = Number(level.min_orders || 0)
+      const nextMin = Number(next.min_orders || 0)
+      const span = Math.max(1, nextMin - currentMin)
+      progress = Math.max(0, Math.min(100, Math.round((totalOrders - currentMin) / span * 100)))
+      const remain = Math.max(0, nextMin - totalOrders)
+      const ratingGap = Math.max(0, Number(next.min_rating || 0) - rating)
+      nextText = `距离 ${next.level} 还需 ${remain} 单`
+      if (ratingGap > 0) nextText += `，评分需提升 ${ratingGap.toFixed(2)}`
+    }
+    return {
+      code: level.level || 'V1',
+      name: level.name || '新晋救援者',
+      coefficient: Number(level.coefficient || 0.8).toFixed(2),
+      badgeColor: level.badge_color || '#0F766E',
+      gradientFrom: level.gradient_from || '#CCFBF1',
+      gradientTo: level.gradient_to || '#99F6E4',
+      totalOrders,
+      rating: rating.toFixed(2),
+      acceptCount7d: Number(driver.accept_count_7d || 0),
+      progress,
+      nextText
+    }
   },
 
   /**
@@ -134,40 +205,142 @@ Page({
       if (!data) return
       const pick = (n) => ({
         count: n.orders != null ? n.orders : (n.count || 0),
-        amount: n.earnings != null ? n.earnings : (n.amount || 0)
+        amount: Number(n.earnings != null ? n.earnings : (n.amount || 0)).toFixed(2)
       })
       this.setData({
         earnings: {
           today: pick(data.today || {}),
           month: pick(data.month || {}),
-          total: pick(data.total || {})
-        }
+          total: pick(data.total || {}),
+          pendingAmount: Number(data.pending_earnings || 0).toFixed(2)
+        },
+        hasPendingEarnings: Number(data.pending_earnings || 0) > 0
       })
     }).catch(err => {
       console.error('loadEarnings fail', err)
     })
   },
 
-  /**
-   * 加载服务卡（仅用户角色）
-   */
-  loadCards() {
-    api.cards.mine().then(data => {
-      const arr = Array.isArray(data) ? data : (data && data.list) ? data.list : []
-      const normalized = arr.map(c => ({
-        id: c.id,
-        cardNo: c.card_no || c.cardNo || '',
-        vehicleType: c.vehicle_type || c.vehicleType || c.vehicle_size || 'medium',
-        status: c.status || 'unused',
-        price: c.price || 0,
-        totalUses: c.total_uses || c.totalUses || 1,
-        usedCount: c.used_count || c.usedCount || 0
-      }))
-      this.setData({ cards: normalized })
+  loadWallet() {
+    api.driver.wallet().then(data => {
+      if (!data) return
+      const typeMap = { wechat: '微信零钱', alipay: '支付宝', bank: '银行卡' }
+      const statusMap = {
+        pending: { label: '审核中', className: 'pending' },
+        paid: { label: '已打款', className: 'paid' },
+        approved: { label: '已打款', className: 'paid' },
+        rejected: { label: '已拒绝', className: 'rejected' }
+      }
+      const withdrawals = (data.withdrawals || []).map(item => {
+        const status = statusMap[item.status] || { label: item.status || '未知', className: 'pending' }
+        return {
+          ...item,
+          typeLabel: typeMap[item.type] || item.type || '其他',
+          statusLabel: status.label,
+          statusClass: status.className,
+          createdAtText: this.formatWalletTime(item.created_at)
+        }
+      })
+      this.setData({
+        wallet: {
+          balance: Number(data.balance || 0).toFixed(2),
+          frozenAmount: Number(data.frozen_amount || 0).toFixed(2),
+          totalEarnings: Number(data.total_earnings || 0).toFixed(2),
+          minWithdrawAmount: Number(data.min_withdraw_amount || 10),
+          withdrawals
+        }
+      })
     }).catch(err => {
-      console.error('loadCards fail', err)
-      this.setData({ cards: [] })
+      console.error('loadWallet fail', err)
     })
+  },
+
+  formatWalletTime(value) {
+    if (!value) return ''
+    return String(value).replace('T', ' ').substring(0, 16)
+  },
+
+  onOpenWithdraw() {
+    const balance = Number(this.data.wallet.balance || 0)
+    const minAmount = Number(this.data.wallet.minWithdrawAmount || 10)
+    if (balance < minAmount) {
+      wx.showToast({ title: `余额满${minAmount}元后可提现`, icon: 'none' })
+      return
+    }
+    const driver = this.data.driver || {}
+    this.setData({
+      showWithdrawModal: true,
+      withdrawTypeIndex: 0,
+      withdrawAmount: '',
+      withdrawAccountName: driver.name || '',
+      withdrawAccount: driver.phone || ''
+    })
+  },
+
+  onCloseWithdraw() {
+    if (!this.data.withdrawing) this.setData({ showWithdrawModal: false })
+  },
+
+  onWithdrawTypeChange(e) {
+    this.setData({ withdrawTypeIndex: Number(e.detail.value || 0), withdrawAccount: '' })
+  },
+
+  onWithdrawAmountInput(e) {
+    this.setData({ withdrawAmount: e.detail.value || '' })
+  },
+
+  onWithdrawNameInput(e) {
+    this.setData({ withdrawAccountName: e.detail.value || '' })
+  },
+
+  onWithdrawAccountInput(e) {
+    this.setData({ withdrawAccount: e.detail.value || '' })
+  },
+
+  onWithdrawAll() {
+    this.setData({ withdrawAmount: String(this.data.wallet.balance || '') })
+  },
+
+  async onSubmitWithdraw() {
+    if (this.data.withdrawing) return
+    const amount = Number(this.data.withdrawAmount)
+    const minAmount = Number(this.data.wallet.minWithdrawAmount || 10)
+    const balance = Number(this.data.wallet.balance || 0)
+    const accountName = String(this.data.withdrawAccountName || '').trim()
+    const account = String(this.data.withdrawAccount || '').trim()
+    if (!amount || amount < minAmount) {
+      wx.showToast({ title: `最低提现${minAmount}元`, icon: 'none' })
+      return
+    }
+    if (amount > balance) {
+      wx.showToast({ title: '提现金额超过可用余额', icon: 'none' })
+      return
+    }
+    if (accountName.length < 2) {
+      wx.showToast({ title: '请填写收款人姓名', icon: 'none' })
+      return
+    }
+    if (account.length < 4) {
+      wx.showToast({ title: '请填写正确的收款账号', icon: 'none' })
+      return
+    }
+    const type = this.data.withdrawTypes[this.data.withdrawTypeIndex].value
+    this.setData({ withdrawing: true })
+    try {
+      await api.driver.withdraw({
+        amount,
+        type,
+        account,
+        account_name: accountName
+      })
+      this.setData({ showWithdrawModal: false })
+      wx.showToast({ title: '提现申请已提交', icon: 'success' })
+      this.loadWallet()
+    } catch (err) {
+      console.error('withdraw fail', err)
+    } finally {
+      this.setData({ withdrawing: false })
+    }
   },
 
   /**
@@ -225,7 +398,7 @@ Page({
             api.driver.updateStatus('offline').catch(() => {})
           }
           try { app.clearLogin() } catch (e) {}
-          this.setData({ isLoggedIn: false, userInfo: null, driver: null, cards: [] })
+          this.setData({ isLoggedIn: false, userInfo: null, driver: null })
           wx.showToast({ title: '已退出登录', icon: 'success' })
           setTimeout(() => this.goToLogin(), 600)
         }

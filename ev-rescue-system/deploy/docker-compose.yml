@@ -1,0 +1,38 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3108
+      RESCUE_DB_FILE: /data/rescue.json
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3108/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy_data:/data
+      - ./caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+
